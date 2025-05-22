@@ -5,95 +5,103 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>My Account - VidZone</title>
   <script src="https://cdn.tailwindcss.com"></script>
-
   <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
   <script src="firebase-config.js"></script>
 </head>
-<body class="bg-gray-100 min-h-screen p-4 flex flex-col items-center justify-center">
+<body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
 
-  <div class="bg-white p-6 rounded-lg shadow-md w-full max-w-md">
-    <h2 class="text-2xl font-bold mb-4 text-center">Account Settings</h2>
+  <div class="bg-white w-full max-w-md p-6 rounded-lg shadow-md">
+    <h2 class="text-2xl font-bold text-center mb-6">Account Settings</h2>
 
     <div class="mb-4">
       <p class="text-gray-700"><strong>Email:</strong> <span id="user-email">Loading...</span></p>
       <p class="text-gray-700"><strong>Name:</strong> <span id="user-name">Loading...</span></p>
+      <p class="text-sm text-gray-500 mt-1" id="login-method"></p>
     </div>
 
     <div class="space-y-4">
+      <!-- Update Display Name -->
       <div>
-        <input id="new-name" type="text" placeholder="New Display Name" class="w-full px-3 py-2 border rounded"/>
-        <button onclick="updateName()" class="mt-2 w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded">Update Name</button>
+        <input id="new-name" type="text" placeholder="New Display Name" class="w-full px-4 py-2 border rounded-md"/>
+        <button onclick="updateName()" class="w-full mt-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded-lg">Update Name</button>
       </div>
 
-      <div>
-        <input id="new-email" type="email" placeholder="New Email" class="w-full px-3 py-2 border rounded"/>
-        <button onclick="updateEmail()" class="mt-2 w-full bg-yellow-500 hover:bg-yellow-600 text-white py-2 rounded">Update Email</button>
+      <!-- Change Email -->
+      <div id="email-section" class="hidden">
+        <input id="new-email" type="email" placeholder="New Email" class="w-full px-4 py-2 border rounded-md"/>
+        <button onclick="updateEmail()" class="w-full mt-2 bg-yellow-500 hover:bg-yellow-600 text-white font-semibold py-2 rounded-lg">Update Email</button>
       </div>
 
-      <div>
-        <input id="new-password" type="password" placeholder="New Password" class="w-full px-3 py-2 border rounded"/>
-        <button onclick="updatePassword()" class="mt-2 w-full bg-purple-600 hover:bg-purple-700 text-white py-2 rounded">Update Password</button>
+      <!-- Change Password -->
+      <div id="password-section" class="hidden">
+        <input id="new-password" type="password" placeholder="New Password" class="w-full px-4 py-2 border rounded-md"/>
+        <button onclick="updatePassword()" class="w-full mt-2 bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 rounded-lg">Update Password</button>
       </div>
 
-      <button onclick="logout()" class="w-full bg-red-600 hover:bg-red-700 text-white py-2 rounded">Log Out</button>
+      <!-- Logout -->
+      <button onclick="logout()" class="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-2 rounded-lg">Log Out</button>
     </div>
 
     <p id="msg" class="text-center mt-4 text-sm text-red-600"></p>
   </div>
 
   <script>
-    const user = firebase.auth().currentUser;
-
     firebase.auth().onAuthStateChanged((user) => {
-      if (user) {
-        document.getElementById("user-email").innerText = user.email;
-        document.getElementById("user-name").innerText = user.displayName || "No name set";
-      } else {
+      if (!user) {
         window.location.href = "login.html";
+        return;
+      }
+
+      const isGoogle = user.providerData.some(p => p.providerId === "google.com");
+      document.getElementById("user-email").innerText = user.email;
+      document.getElementById("user-name").innerText = user.displayName || "No name set";
+      document.getElementById("login-method").innerText = isGoogle
+        ? "Signed in with Google"
+        : "Signed in with Email & Password";
+
+      // Only show email/password change if not using Google
+      if (!isGoogle) {
+        document.getElementById("email-section").classList.remove("hidden");
+        document.getElementById("password-section").classList.remove("hidden");
       }
     });
 
     function updateName() {
-      const newName = document.getElementById("new-name").value;
+      const newName = document.getElementById("new-name").value.trim();
       const user = firebase.auth().currentUser;
 
+      if (!newName) return showMessage("Name cannot be empty.");
       user.updateProfile({ displayName: newName })
         .then(() => {
-          document.getElementById("msg").innerText = "Display name updated!";
           document.getElementById("user-name").innerText = newName;
+          showMessage("Name updated successfully!", "green");
         })
-        .catch((error) => {
-          document.getElementById("msg").innerText = error.message;
-        });
+        .catch(err => showMessage(err.message));
     }
 
     function updateEmail() {
-      const newEmail = document.getElementById("new-email").value;
+      const newEmail = document.getElementById("new-email").value.trim();
       const user = firebase.auth().currentUser;
 
+      if (!newEmail) return showMessage("Email cannot be empty.");
       user.updateEmail(newEmail)
         .then(() => {
-          document.getElementById("msg").innerText = "Email updated!";
           document.getElementById("user-email").innerText = newEmail;
+          showMessage("Email updated successfully!", "green");
         })
-        .catch((error) => {
-          document.getElementById("msg").innerText = error.message;
-        });
+        .catch(err => showMessage(err.message));
     }
 
     function updatePassword() {
-      const newPassword = document.getElementById("new-password").value;
+      const newPassword = document.getElementById("new-password").value.trim();
       const user = firebase.auth().currentUser;
 
+      if (!newPassword) return showMessage("Password cannot be empty.");
       user.updatePassword(newPassword)
-        .then(() => {
-          document.getElementById("msg").innerText = "Password updated!";
-        })
-        .catch((error) => {
-          document.getElementById("msg").innerText = error.message;
-        });
+        .then(() => showMessage("Password updated successfully!", "green"))
+        .catch(err => showMessage(err.message));
     }
 
     function logout() {
@@ -101,6 +109,12 @@
         window.location.href = "login.html";
       });
     }
+
+    function showMessage(msg, color = "red") {
+      const el = document.getElementById("msg");
+      el.innerText = msg;
+      el.style.color = color;
+    }
   </script>
 </body>
-      </html>
+</html>
