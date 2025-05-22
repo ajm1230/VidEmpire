@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" >
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Login - VidZone</title>
   <script src="https://cdn.tailwindcss.com"></script>
 
@@ -10,136 +10,306 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
   <script src="firebase-config.js"></script>
+
+  <!-- Heroicons CDN for icons -->
+  <script src="https://unpkg.com/feather-icons"></script>
 </head>
 <body class="bg-gray-100 flex items-center justify-center min-h-screen px-4">
 
-  <div class="bg-white p-6 rounded-lg shadow-lg w-full max-w-md">
-    <h2 class="text-2xl font-bold text-center mb-6">Welcome to VidZone</h2>
+  <div class="bg-white p-8 rounded-lg shadow-lg w-full max-w-md">
+    <h2 class="text-3xl font-extrabold text-center mb-8 text-blue-700">Welcome to VidZone</h2>
 
-    <div class="flex justify-center mb-4">
-      <button onclick="switchMode('email')" class="px-4 py-2 bg-blue-500 text-white rounded-l">Email</button>
-      <button onclick="switchMode('phone')" class="px-4 py-2 bg-gray-300 text-black rounded-r">Phone</button>
+    <div class="flex justify-center mb-6 space-x-2">
+      <button id="emailTab" onclick="switchMode('email')" class="flex items-center space-x-1 px-5 py-2 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 transition">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v16H4z"/><path d="M22 6l-10 7L2 6"/></svg>
+        <span>Email</span>
+      </button>
+      <button id="phoneTab" onclick="switchMode('phone')" class="flex items-center space-x-1 px-5 py-2 rounded-lg bg-gray-300 text-gray-700 hover:bg-gray-400 transition">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16v1a2 2 0 0 1-2 2h-3l-4 4v-4H6a2 2 0 0 1-2-2v-1"/></svg>
+        <span>Phone</span>
+      </button>
     </div>
 
     <!-- Email Auth Form -->
-    <div id="email-form">
-      <input id="email" type="email" placeholder="Email" class="w-full px-4 py-2 border rounded mb-2" />
-      <input id="password" type="password" placeholder="Password" class="w-full px-4 py-2 border rounded mb-2" />
+    <div id="email-form" class="">
+      <input id="email" type="email" placeholder="Email" class="w-full px-4 py-2 border border-gray-300 rounded-md mb-3 focus:outline-none focus:ring-2 focus:ring-blue-500" autocomplete="email" />
+      <input id="password" type="password" placeholder="Password" class="w-full px-4 py-2 border border-gray-300 rounded-md mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500" autocomplete="current-password" />
 
-      <button onclick="loginOrSignupEmail()" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded" id="email-btn">
+      <button id="email-btn" onclick="loginOrSignupEmail()" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-md font-semibold transition mb-3">
         Log In
       </button>
 
-      <button onclick="loginWithGoogle()" class="w-full mt-2 bg-red-600 hover:bg-red-700 text-white py-2 rounded">
-        Continue with Google
+      <button onclick="loginWithGoogle()" class="w-full bg-red-600 hover:bg-red-700 text-white py-2 rounded-md font-semibold transition flex justify-center items-center space-x-2">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 488 512" fill="currentColor"><path d="M488 261.8c0-17.7-1.6-34.7-4.6-51.3H249v97.1h134.3c-5.8 31.2-23.3 57.7-49.6 75.4v62.4h80.1c47-43.3 74.2-107.3 74.2-180.6z"/><path d="M249 492c66.8 0 122.8-22.2 163.7-60.3l-80.1-62.4c-22.2 15-50.7 23.9-83.6 23.9-64 0-118.3-43.2-137.7-101.4H30.7v63.5C69.8 443.4 153.2 492 249 492z"/><path d="M111.3 289.8c-4.6-13.9-7.3-28.7-7.3-44 0-15.3 2.7-30.1 7.3-44V138.3H30.7c-14.3 28.5-22.5 60.4-22.5 94 0 33.6 8.2 65.5 22.5 94l80.6-36.5z"/><path d="M249 97.7c35.4 0 67.2 12.2 92.4 36.1l69.3-69.3C372 29 312.3 0 249 0 153.2 0 69.8 48.6 30.7 138.3l80.6 36.5c19.4-58.2 73.7-101.4 137.7-101.4z"/></svg>
+        <span>Continue with Google</span>
       </button>
 
-      <p class="text-center text-sm mt-3 text-gray-600">
+      <p class="text-center text-sm mt-4 text-gray-600">
         <span id="email-toggle-text">Don't have an account?</span>
-        <button onclick="toggleEmailMode()" class="text-blue-500 underline" id="email-toggle-btn">Sign Up</button>
+        <button onclick="toggleEmailMode()" class="text-blue-600 underline font-semibold" id="email-toggle-btn">Sign Up</button>
       </p>
     </div>
 
     <!-- Phone Auth Form -->
     <div id="phone-form" class="hidden">
-      <input id="phone-number" type="text" placeholder="+1234567890" class="w-full px-4 py-2 border rounded mb-2" />
-      <div id="recaptcha-container" class="mb-2"></div>
-      <button onclick="sendOTP()" class="w-full bg-blue-500 text-white py-2 rounded mb-2">Send OTP</button>
+      <input id="phone-number" type="text" placeholder="+1234567890" class="w-full px-4 py-2 border border-gray-300 rounded-md mb-3 focus:outline-none focus:ring-2 focus:ring-blue-500" autocomplete="tel" />
 
-      <input id="otp" type="text" placeholder="Enter OTP" class="w-full px-4 py-2 border rounded mb-2" />
-      <button onclick="verifyOTP()" class="w-full bg-green-600 text-white py-2 rounded">Verify & Login</button>
+      <div id="recaptcha-container" class="mb-3"></div>
+
+      <button id="send-otp-btn" onclick="sendOTP()" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-md font-semibold transition mb-4">
+        Send OTP
+      </button>
+
+      <input id="otp" type="text" placeholder="Enter OTP" class="w-full px-4 py-2 border border-gray-300 rounded-md mb-2 focus:outline-none focus:ring-2 focus:ring-green-500" autocomplete="one-time-code" disabled />
+
+      <div class="flex justify-between items-center mb-4">
+        <button id="verify-otp-btn" onclick="verifyOTP()" class="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-md font-semibold transition disabled:opacity-50" disabled>
+          Verify & Login
+        </button>
+
+        <button id="resend-otp-btn" onclick="resendOTP()" class="text-blue-600 underline font-semibold disabled:opacity-50" disabled>
+          Resend OTP
+        </button>
+      </div>
     </div>
 
-    <p id="msg" class="text-center text-sm text-red-600 mt-4"></p>
+    <p id="msg" class="text-center text-sm text-red-600 mt-3 min-h-[1.25rem]"></p>
   </div>
 
-  <script>
-    let emailLoginMode = true;
-    let currentForm = 'email';
-    let confirmationResult = null;
+<script>
+  // Firebase Auth & global variables
+  let emailLoginMode = true;
+  let currentForm = 'email';
+  let confirmationResult = null;
+  let resendTimeoutId = null;
+  const RESEND_OTP_TIMEOUT = 30000; // 30 seconds cooldown
 
-    firebase.auth().onAuthStateChanged((user) => {
-      if (user && (user.emailVerified || user.providerData[0].providerId === 'phone')) {
-        window.location.href = "account.html";
+  // Initialize invisible reCAPTCHA verifier once
+  let recaptchaVerifier = null;
+  window.onload = () => {
+    recaptchaVerifier = new firebase.auth.RecaptchaVerifier('recaptcha-container', {
+      size: 'invisible',
+      callback: () => {
+        // Recaptcha resolved, you can proceed to send OTP again if needed
+      },
+      'expired-callback': () => {
+        showMsg('reCAPTCHA expired, please try again.');
       }
     });
+    recaptchaVerifier.render();
+  };
 
-    function switchMode(mode) {
-      currentForm = mode;
-      document.getElementById("email-form").classList.toggle("hidden", mode !== 'email');
-      document.getElementById("phone-form").classList.toggle("hidden", mode !== 'phone');
-      showMsg("");
+  // Redirect if already logged in and verified
+  firebase.auth().onAuthStateChanged((user) => {
+    if (user && (user.emailVerified || user.providerData.some(p => p.providerId === 'phone'))) {
+      window.location.href = "account.html";
+    }
+  });
+
+  // Switch between email and phone auth forms
+  function switchMode(mode) {
+    currentForm = mode;
+    document.getElementById("email-form").classList.toggle("hidden", mode !== 'email');
+    document.getElementById("phone-form").classList.toggle("hidden", mode !== 'phone');
+
+    // Toggle tab styles
+    document.getElementById('emailTab').classList.toggle('bg-blue-600', mode === 'email');
+    document.getElementById('emailTab').classList.toggle('text-white', mode === 'email');
+    document.getElementById('emailTab').classList.toggle('bg-gray-300', mode !== 'email');
+    document.getElementById('emailTab').classList.toggle('text-gray-700', mode !== 'email');
+
+    document.getElementById('phoneTab').classList.toggle('bg-blue-600', mode === 'phone');
+    document.getElementById('phoneTab').classList.toggle('text-white', mode === 'phone');
+    document.getElementById('phoneTab').classList.toggle('bg-gray-300', mode !== 'phone');
+    document.getElementById('phoneTab').classList.toggle('text-gray-700', mode !== 'phone');
+
+    clearPhoneForm();
+    clearMessages();
+  }
+
+  // Toggle between Login and Signup mode for email
+  function toggleEmailMode() {
+    emailLoginMode = !emailLoginMode;
+    document.getElementById("email-btn").textContent = emailLoginMode ? "Log In" : "Sign Up";
+    document.getElementById("email-toggle-text").textContent = emailLoginMode
+      ? "Don't have an account?"
+      : "Already have an account?";
+    document.getElementById("email-toggle-btn").textContent = emailLoginMode ? "Sign Up" : "Log In";
+    clearMessages();
+  }
+
+  // Email Login or Signup flow
+  function loginOrSignupEmail() {
+    const email = document.getElementById("email").value.trim();
+    const password = document.getElementById("password").value;
+
+    if (!email || !password) {
+      showMsg("Please enter email and password.");
+      return;
     }
 
-    function toggleEmailMode() {
-      emailLoginMode = !emailLoginMode;
-      document.getElementById("email-btn").textContent = emailLoginMode ? "Log In" : "Sign Up";
-      document.getElementById("email-toggle-text").textContent = emailLoginMode
-        ? "Don't have an account?" : "Already have an account?";
-      document.getElementById("email-toggle-btn").textContent = emailLoginMode ? "Sign Up" : "Log In";
-      showMsg("");
-    }
-
-    function loginOrSignupEmail() {
-      const email = document.getElementById("email").value.trim();
-      const password = document.getElementById("password").value;
-
-      if (emailLoginMode) {
-        firebase.auth().signInWithEmailAndPassword(email, password)
-          .then(userCred => {
-            if (userCred.user.emailVerified) {
-              window.location.href = "account.html";
-            } else {
-              showMsg("Please verify your email before logging in.");
-            }
-          })
-          .catch(e => showMsg(e.message));
-      } else {
-        firebase.auth().createUserWithEmailAndPassword(email, password)
-          .then(userCred => {
-            userCred.user.sendEmailVerification()
-              .then(() => showMsg("Signup successful! Check your email for verification.", "green"));
-          })
-          .catch(e => showMsg(e.message));
-      }
-    }
-
-    function loginWithGoogle() {
-      const provider = new firebase.auth.GoogleAuthProvider();
-      firebase.auth().signInWithPopup(provider)
-        .then(() => window.location.href = "account.html")
+    if (emailLoginMode) {
+      // Login
+      firebase.auth().signInWithEmailAndPassword(email, password)
+        .then(userCred => {
+          if (userCred.user.emailVerified) {
+            window.location.href = "account.html";
+          } else {
+            showMsg("Please verify your email before logging in.");
+          }
+        })
         .catch(e => showMsg(e.message));
-    }
-
-    function sendOTP() {
-      const phoneNumber = document.getElementById("phone-number").value.trim();
-      const appVerifier = new firebase.auth.RecaptchaVerifier('recaptcha-container', {
-        size: 'invisible',
-        callback: () => sendOTP()
-      });
-
-      firebase.auth().signInWithPhoneNumber(phoneNumber, appVerifier)
-        .then(result => {
-          confirmationResult = result;
-          showMsg("OTP sent to your phone", "green");
+    } else {
+      // Signup
+      firebase.auth().createUserWithEmailAndPassword(email, password)
+        .then(userCred => {
+          userCred.user.sendEmailVerification()
+            .then(() => showMsg("Signup successful! Check your email for verification.", "green"));
         })
         .catch(e => showMsg(e.message));
     }
+  }
 
-    function verifyOTP() {
-      const otpCode = document.getElementById("otp").value.trim();
-      if (!confirmationResult) return showMsg("Please request OTP first.");
+  // Google Login
+  function loginWithGoogle() {
+    const provider = new firebase.auth.GoogleAuthProvider();
+    firebase.auth().signInWithPopup(provider)
+      .then(() => window.location.href = "account.html")
+      .catch(e => showMsg(e.message));
+  }
 
-      confirmationResult.confirm(otpCode)
-        .then(() => window.location.href = "account.html")
-        .catch(e => showMsg("Invalid OTP or session expired. Try again."));
+  // Send OTP for phone login/signup
+  function sendOTP() {
+    const phoneNumber = document.getElementById("phone-number").value.trim();
+    if (!phoneNumber.match(/^\+\d{10,15}$/)) {
+      showMsg("Enter a valid phone number with country code.");
+      return;
     }
 
-    function showMsg(message, color = "red") {
-      const msgEl = document.getElementById("msg");
-      msgEl.textContent = message;
-      msgEl.style.color = color;
+    showMsg("Sending OTP...", "blue");
+    disablePhoneInputs(true);
+
+    firebase.auth().signInWithPhoneNumber(phoneNumber, recaptchaVerifier)
+      .then(result => {
+        confirmationResult = result;
+        showMsg("OTP sent to your phone.", "green");
+        enableOTPInputs(true);
+        startResendCooldown();
+      })
+      .catch(e => {
+        showMsg(e.message);
+        disablePhoneInputs(false);
+        enableOTPInputs(false);
+        resetResendButton();
+      });
+  }
+
+  // Verify OTP entered by user
+  function verifyOTP() {
+    const otpCode = document.getElementById("otp").value.trim();
+    if (!otpCode) {
+      showMsg("Please enter the OTP.");
+      return;
     }
-  </script>
+    if (!confirmationResult) {
+      showMsg("Please request OTP first.");
+      return;
+    }
+
+    showMsg("Verifying OTP...", "blue");
+    disableOTPInputs(true);
+
+    confirmationResult.confirm(otpCode)
+      .then(() => {
+        window.location.href = "account.html";
+      })
+      .catch(() => {
+        showMsg("Invalid OTP or session expired. Try again.");
+        disableOTPInputs(false);
+      });
+  }
+
+  // Resend OTP button handler
+  function resendOTP() {
+    if (resendTimeoutId) return; // cooldown active, do nothing
+    sendOTP();
+  }
+
+  // Utility to start resend cooldown timer (30s)
+  function startResendCooldown() {
+    const resendBtn = document.getElementById('resend-otp-btn');
+    resendBtn.disabled = true;
+    let secondsLeft = 30;
+    resendBtn.textContent = `Resend OTP (${secondsLeft}s)`;
+
+    resendTimeoutId = setInterval(() => {
+      secondsLeft--;
+      if (secondsLeft <= 0) {
+        clearInterval(resendTimeoutId);
+        resendTimeoutId = null;
+        resendBtn.textContent = 'Resend OTP';
+        resendBtn.disabled = false;
+      } else {
+        resendBtn.textContent = `Resend OTP (${secondsLeft}s)`;
+      }
+    }, 1000);
+  }
+
+  // Enable or disable phone number input and Send OTP button
+  function disablePhoneInputs(disable) {
+    document.getElementById('phone-number').disabled = disable;
+    document.getElementById('send-otp-btn').disabled = disable;
+  }
+
+  // Enable or disable OTP input, Verify & Resend buttons
+  function enableOTPInputs(enable) {
+    document.getElementById('otp').disabled = !enable;
+    document.getElementById('verify-otp-btn').disabled = !enable;
+    document.getElementById('resend-otp-btn').disabled = !enable;
+  }
+
+  // Disable OTP inputs (used during verifying)
+  function disableOTPInputs(disable) {
+    document.getElementById('otp').disabled = disable;
+    document.getElementById('verify-otp-btn').disabled = disable;
+    document.getElementById('resend-otp-btn').disabled = disable;
+  }
+
+  // Clear phone form fields and disable OTP inputs
+  function clearPhoneForm() {
+    document.getElementById('phone-number').value = '';
+    document.getElementById('otp').value = '';
+    disablePhoneInputs(false);
+    enableOTPInputs(false);
+    resetResendButton();
+  }
+
+  // Reset resend button text and state
+  function resetResendButton() {
+    const resendBtn = document.getElementById('resend-otp-btn');
+    resendBtn.textContent = 'Resend OTP';
+    resendBtn.disabled = true;
+    if (resendTimeoutId) {
+      clearInterval(resendTimeoutId);
+      resendTimeoutId = null;
+    }
+  }
+
+  // Clear messages
+  function clearMessages() {
+    showMsg('');
+  }
+
+  // Show message in msg element, color default red or green
+  function showMsg(message, color = 'red') {
+    const msgEl = document.getElementById('msg');
+    msgEl.textContent = message;
+    msgEl.style.color = color;
+  }
+
+  // Initialize UI with email tab active
+  switchMode('email');
+</script>
+
 </body>
   </html>
