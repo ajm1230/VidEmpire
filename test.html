@@ -2,123 +2,155 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Firebase Upload and Retrieve</title>
-  <style>
-    body { font-family: sans-serif; max-width: 700px; margin: auto; padding: 20px; }
-    input, textarea { width: 100%; margin-bottom: 10px; padding: 8px; }
-    .post { border: 1px solid #ccc; padding: 10px; margin-top: 20px; }
-    video, img { max-width: 100%; height: auto; }
-    .timestamp { font-size: 0.9em; color: gray; }
-  </style>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Upload & Manage Media</title>
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
+
+  <!-- Your Firebase config and initialization -->
   <script src="firebase-config.js"></script>
+
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 800px; margin: 20px auto; }
+    input, textarea, button { margin: 5px 0; padding: 8px; width: 100%; }
+    video, img { max-width: 200px; max-height: 150px; display: block; margin-bottom: 5px; }
+    .media-item { border: 1px solid #ccc; padding: 10px; margin-bottom: 15px; }
+  </style>
 </head>
 <body>
 
-<h2>Upload Image or Video</h2>
-
+<h2>Upload Image/Video..</h2>
 <form id="uploadForm">
+  <input type="file" id="mediaFile" accept="image/*,video/*" required />
   <input type="text" id="title" placeholder="Title" required />
   <textarea id="description" placeholder="Description" rows="3" required></textarea>
-  <input type="file" id="fileInput" accept="image/*,video/*" required />
   <button type="submit">Upload</button>
 </form>
 
-<h2>All Posts</h2>
-<div id="posts"></div>
-
-<!-- Firebase SDKs -->
-<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-storage-compat.js"></script>
+<h2>Your Uploaded Media</h2>
+<div id="mediaList"></div>
 
 <script>
-  // Replace this config with your Firebase project settings
-  const firebaseConfig = {
-    apiKey: "YOUR_API_KEY",
-    authDomain: "YOUR_AUTH_DOMAIN",
-    databaseURL: "YOUR_DATABASE_URL",
-    projectId: "YOUR_PROJECT_ID",
-    storageBucket: "YOUR_STORAGE_BUCKET",
-    messagingSenderId: "YOUR_MSG_ID",
-    appId: "YOUR_APP_ID"
-  };
-
-  // Initialize Firebase
-  firebase.initializeApp(firebaseConfig);
   const auth = firebase.auth();
   const db = firebase.database();
   const storage = firebase.storage();
 
-  // Sign in anonymously (for testing)
-  auth.signInAnonymously().catch(console.error);
+  const uploadForm = document.getElementById('uploadForm');
+  const mediaFile = document.getElementById('mediaFile');
+  const titleInput = document.getElementById('title');
+  const descriptionInput = document.getElementById('description');
+  const mediaList = document.getElementById('mediaList');
 
-  const form = document.getElementById('uploadForm');
-  const postsDiv = document.getElementById('posts');
+  let currentUser = null;
 
-  form.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const title = document.getElementById('title').value.trim();
-    const description = document.getElementById('description').value.trim();
-    const file = document.getElementById('fileInput').files[0];
-
-    if (!file || !title || !description) {
-      alert('Fill all fields and select a file');
+  auth.onAuthStateChanged(user => {
+    if (!user) {
+      alert("Please login first.");
       return;
     }
+    currentUser = user;
+    loadUserMedia();
+  });
+
+  uploadForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!currentUser) {
+      alert("Not logged in");
+      return;
+    }
+
+    const file = mediaFile.files[0];
+    if (!file) return alert("Select a file");
+
+    const title = titleInput.value.trim();
+    const description = descriptionInput.value.trim();
+    if (!title || !description) return alert("Fill title and description");
+
+    const timestamp = Date.now();
+    const fileExt = file.name.split('.').pop();
+    const storagePath = `user_uploads/${currentUser.uid}/${timestamp}.${fileExt}`;
 
     try {
-      const uid = auth.currentUser.uid;
-      const ext = file.name.split('.').pop();
-      const path = `uploads/${uid}_${Date.now()}.${ext}`;
-      const ref = storage.ref(path);
-      const snapshot = await ref.put(file);
-      const url = await snapshot.ref.getDownloadURL();
+      const storageRef = storage.ref(storagePath);
+      await storageRef.put(file);
+      const fileURL = await storageRef.getDownloadURL();
 
-      await db.ref('media').push({
-        uid,
+      const newMediaRef = db.ref('media').push();
+      await newMediaRef.set({
+        uid: currentUser.uid,
         title,
         description,
-        mediaUrl: url,
-        mediaType: file.type.startsWith('video') ? 'video' : 'image',
-        timestamp: Date.now()
+        fileURL,
+        fileType: file.type.startsWith('video') ? 'video' : 'image',
+        timestamp
       });
 
-      form.reset();
-      alert("Upload successful!");
+      uploadForm.reset();
+      loadUserMedia();
+
     } catch (err) {
-      alert("Error: " + err.message);
+      console.error("Upload error:", err);
+      alert("Upload failed: " + err.message);
     }
   });
 
-  function formatTime(ts) {
-    return new Date(ts).toLocaleString();
+  function loadUserMedia() {
+    mediaList.innerHTML = "Loading...";
+    db.ref('media').orderByChild('uid').equalTo(currentUser.uid).once('value')
+      .then(snapshot => {
+        mediaList.innerHTML = "";
+        if (!snapshot.exists()) {
+          mediaList.innerHTML = "<p>No media uploaded yet.</p>";
+          return;
+        }
+
+        snapshot.forEach(childSnap => {
+          const data = childSnap.val();
+          const key = childSnap.key;
+          const div = document.createElement('div');
+          div.classList.add('media-item');
+          div.innerHTML = `
+            ${data.fileType === 'video' ? `<video controls src="${data.fileURL}"></video>` : `<img src="${data.fileURL}" alt="media"/>`}
+            <input type="text" value="${data.title}" data-key="${key}" class="edit-title" />
+            <textarea rows="3" data-key="${key}" class="edit-description">${data.description}</textarea>
+            <button data-key="${key}" class="save-btn">Save</button>
+          `;
+          mediaList.appendChild(div);
+        });
+
+        document.querySelectorAll('.save-btn').forEach(button => {
+          button.addEventListener('click', saveEdit);
+        });
+      });
   }
 
-  db.ref('media').on('value', snapshot => {
-    postsDiv.innerHTML = '';
-    const data = snapshot.val();
-    if (!data) {
-      postsDiv.innerHTML = "<p>No posts yet</p>";
+  function saveEdit(e) {
+    const key = e.target.getAttribute('data-key');
+    const title = document.querySelector(`.edit-title[data-key="${key}"]`).value.trim();
+    const description = document.querySelector(`.edit-description[data-key="${key}"]`).value.trim();
+
+    if (!title || !description) {
+      alert("Title and description cannot be empty.");
       return;
     }
 
-    Object.values(data).reverse().forEach(post => {
-      const div = document.createElement('div');
-      div.className = "post";
-      div.innerHTML = `
-        <h3>${post.title}</h3>
-        <p>${post.description}</p>
-        ${post.mediaType === 'video'
-          ? `<video controls src="${post.mediaUrl}"></video>`
-          : `<img src="${post.mediaUrl}" alt="media">`
-        }
-        <p class="timestamp">Posted: ${formatTime(post.timestamp)}</p>
-      `;
-      postsDiv.appendChild(div);
+    db.ref(`media/${key}`).once('value').then(snapshot => {
+      if (!snapshot.exists()) return alert("Item not found.");
+      const item = snapshot.val();
+      if (item.uid !== currentUser.uid) {
+        alert("You can only edit your own items.");
+        return;
+      }
+
+      db.ref(`media/${key}`).update({ title, description })
+        .then(() => alert("Updated successfully!"))
+        .catch(err => alert("Update failed: " + err.message));
     });
-  });
+  }
 </script>
 
 </body>
-  </html>
+</html>
