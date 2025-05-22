@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>My Account - VidZone</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+  <script src="firebase-config.js"></script>
+</head>
+<body class="bg-gray-100 min-h-screen p-4 flex flex-col items-center justify-center">
+
+  <div class="bg-white p-6 rounded-lg shadow-md w-full max-w-md">
+    <h2 class="text-2xl font-bold mb-4 text-center">Account Settings</h2>
+
+    <div class="mb-4">
+      <p class="text-gray-700"><strong>Email:</strong> <span id="user-email">Loading...</span></p>
+      <p class="text-gray-700"><strong>Name:</strong> <span id="user-name">Loading...</span></p>
+    </div>
+
+    <div class="space-y-4">
+      <div>
+        <input id="new-name" type="text" placeholder="New Display Name" class="w-full px-3 py-2 border rounded"/>
+        <button onclick="updateName()" class="mt-2 w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded">Update Name</button>
+      </div>
+
+      <div>
+        <input id="new-email" type="email" placeholder="New Email" class="w-full px-3 py-2 border rounded"/>
+        <button onclick="updateEmail()" class="mt-2 w-full bg-yellow-500 hover:bg-yellow-600 text-white py-2 rounded">Update Email</button>
+      </div>
+
+      <div>
+        <input id="new-password" type="password" placeholder="New Password" class="w-full px-3 py-2 border rounded"/>
+        <button onclick="updatePassword()" class="mt-2 w-full bg-purple-600 hover:bg-purple-700 text-white py-2 rounded">Update Password</button>
+      </div>
+
+      <button onclick="logout()" class="w-full bg-red-600 hover:bg-red-700 text-white py-2 rounded">Log Out</button>
+    </div>
+
+    <p id="msg" class="text-center mt-4 text-sm text-red-600"></p>
+  </div>
+
+  <script>
+    const user = firebase.auth().currentUser;
+
+    firebase.auth().onAuthStateChanged((user) => {
+      if (user) {
+        document.getElementById("user-email").innerText = user.email;
+        document.getElementById("user-name").innerText = user.displayName || "No name set";
+      } else {
+        window.location.href = "login.html";
+      }
+    });
+
+    function updateName() {
+      const newName = document.getElementById("new-name").value;
+      const user = firebase.auth().currentUser;
+
+      user.updateProfile({ displayName: newName })
+        .then(() => {
+          document.getElementById("msg").innerText = "Display name updated!";
+          document.getElementById("user-name").innerText = newName;
+        })
+        .catch((error) => {
+          document.getElementById("msg").innerText = error.message;
+        });
+    }
+
+    function updateEmail() {
+      const newEmail = document.getElementById("new-email").value;
+      const user = firebase.auth().currentUser;
+
+      user.updateEmail(newEmail)
+        .then(() => {
+          document.getElementById("msg").innerText = "Email updated!";
+          document.getElementById("user-email").innerText = newEmail;
+        })
+        .catch((error) => {
+          document.getElementById("msg").innerText = error.message;
+        });
+    }
+
+    function updatePassword() {
+      const newPassword = document.getElementById("new-password").value;
+      const user = firebase.auth().currentUser;
+
+      user.updatePassword(newPassword)
+        .then(() => {
+          document.getElementById("msg").innerText = "Password updated!";
+        })
+        .catch((error) => {
+          document.getElementById("msg").innerText = error.message;
+        });
+    }
+
+    function logout() {
+      firebase.auth().signOut().then(() => {
+        window.location.href = "login.html";
+      });
+    }
+  </script>
+</body>
+      </html>
