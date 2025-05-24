@@ -116,15 +116,28 @@
   phoneTabBtn.addEventListener('click', () => switchMode('phone'));
 
   function switchMode(mode) {
-    if (mode === 'email') {
-      emailForm.classList.remove('hidden');
-      phoneForm.classList.add('hidden');
-    } else {
-      phoneForm.classList.remove('hidden');
-      emailForm.classList.add('hidden');
-    }
-    clearMessages();
+  if (mode === 'email') {
+    emailForm.classList.remove('hidden');
+    phoneForm.classList.add('hidden');
+
+    emailTabBtn.classList.add('bg-blue-100', 'text-blue-600');
+    emailTabBtn.classList.remove('text-gray-700');
+
+    phoneTabBtn.classList.remove('bg-blue-100', 'text-blue-600');
+    phoneTabBtn.classList.add('text-gray-700');
+  } else {
+    phoneForm.classList.remove('hidden');
+    emailForm.classList.add('hidden');
+
+    phoneTabBtn.classList.add('bg-blue-100', 'text-blue-600');
+    phoneTabBtn.classList.remove('text-gray-700');
+
+    emailTabBtn.classList.remove('bg-blue-100', 'text-blue-600');
+    emailTabBtn.classList.add('text-gray-700');
   }
+
+  clearMessages();
+}
 
   emailToggleBtn.addEventListener('click', () => {
     emailLoginMode = !emailLoginMode;
