@@ -1,346 +1,156 @@
 <!DOCTYPE html>
-<html lang="en" class="scroll-smooth">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Upload Posts & Videos</title>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
-  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@3.3.2/dist/tailwind.min.css" rel="stylesheet">
-</head>
-<body class="bg-gray-50 min-h-screen flex flex-col">
+  <title>Upload Post</title>
+  <script src="firebase-config.js"></script>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Firebase v9 modular CDN -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+    import { getDatabase, ref, push, set } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
+    import { getStorage, ref as sRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-storage.js";
 
-  <header class="bg-white shadow p-4 flex justify-between items-center">
-    <h1 class="text-2xl font-bold text-indigo-600">My Uploads</h1>
-    <div id="user-info" class="flex items-center space-x-4">
-      <span id="user-email" class="text-gray-700"></span>
-      <button id="logout-btn" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded">Logout</button>
-    </div>
-  </header>
-
-  <main class="flex-grow container mx-auto p-4 max-w-4xl">
-    <!-- Upload Form -->
-    <section class="bg-white rounded shadow p-6 mb-8">
-      <h2 class="text-xl font-semibold mb-4">Upload Post / Video</h2>
-      <form id="upload-form" class="space-y-4">
-        <div>
-          <label for="title" class="block font-medium mb-1">Title</label>
-          <input type="text" id="title" required maxlength="100" class="w-full border border-gray-300 rounded p-2 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-        </div>
-
-        <div>
-          <label for="description" class="block font-medium mb-1">Description</label>
-          <textarea id="description" rows="3" maxlength="500" class="w-full border border-gray-300 rounded p-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"></textarea>
-        </div>
-
-        <div>
-          <label for="tags" class="block font-medium mb-1">Tags (comma separated)</label>
-          <input type="text" id="tags" class="w-full border border-gray-300 rounded p-2 focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="example: nature,summer,travel" />
-        </div>
-
-        <div>
-          <label for="media" class="block font-medium mb-1">Upload Image or Video</label>
-          <input type="file" id="media" accept="image/*,video/*" required class="w-full" />
-        </div>
-
-        <button type="submit" id="upload-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded font-semibold disabled:opacity-50" >Upload</button>
-      </form>
-      <p id="upload-msg" class="mt-2 text-sm"></p>
-    </section>
-
-    <!-- Posts Section -->
-    <section class="mb-12">
-      <h2 class="text-xl font-semibold mb-4">Posts</h2>
-      <div id="posts-container" class="space-y-6"></div>
-    </section>
-
-    <!-- Videos Section -->
-    <section>
-      <h2 class="text-xl font-semibold mb-4">Videos</h2>
-      <div id="videos-container" class="space-y-6"></div>
-    </section>
-  </main>
-<script src="firebase-config.js"></script>
-  <script>
-    // TODO: Replace with your Firebase config
     
 
-    // Initialize Firebase
-    firebase.initializeApp(firebaseConfig);
-    const auth = firebase.auth();
-    const db = firebase.database();
-    const storage = firebase.storage();
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getDatabase(app);
+    const storage = getStorage(app);
 
-    // Elements
-    const userEmailSpan = document.getElementById('user-email');
-    const logoutBtn = document.getElementById('logout-btn');
-    const uploadForm = document.getElementById('upload-form');
-    const uploadBtn = document.getElementById('upload-btn');
-    const uploadMsg = document.getElementById('upload-msg');
+    // Wait for DOM to load
+    document.addEventListener("DOMContentLoaded", () => {
+      const loginContainer = document.getElementById("login-container");
+      const uploadContainer = document.getElementById("upload-container");
+      const userIdInput = document.getElementById("userId");
+      const form = document.getElementById("upload-form");
+      const status = document.getElementById("status");
 
-    const postsContainer = document.getElementById('posts-container');
-    const videosContainer = document.getElementById('videos-container');
+      // Check auth state
+      onAuthStateChanged(auth, user => {
+        if (user) {
+          // Show upload form
+          loginContainer.classList.add("hidden");
+          uploadContainer.classList.remove("hidden");
+          userIdInput.value = user.uid;
+        } else {
+          // Show login prompt
+          loginContainer.classList.remove("hidden");
+          uploadContainer.classList.add("hidden");
+        }
+      });
 
-    let currentUser = null;
-    let editingPostId = null;
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        status.textContent = "";
+        
+        const title = form.title.value.trim();
+        const description = form.description.value.trim();
+        const tagsRaw = form.tags.value.trim();
+        const file = form.media.files[0];
+        const userId = userIdInput.value;
 
-    // Check auth state
-    auth.onAuthStateChanged(user => {
-      if (user) {
-        currentUser = user;
-        userEmailSpan.textContent = user.email;
-        fetchUserPosts();
-      } else {
-        // Not logged in - redirect or show message
-        alert("Please log in first.");
-        window.location.href = "login.html"; // Adjust as needed
-      }
-    });
-
-    logoutBtn.onclick = () => auth.signOut();
-
-    // Utility: Create post/video card element
-    function createPostCard(postId, postData) {
-      const isOwner = currentUser && currentUser.uid === postData.userId;
-      const tagsList = postData.tags ? postData.tags.split(',').map(t => t.trim()).filter(t => t) : [];
-
-      const card = document.createElement('div');
-      card.className = "bg-white rounded shadow p-4";
-
-      const title = document.createElement('h3');
-      title.textContent = postData.title;
-      title.className = "text-lg font-semibold mb-1";
-      card.appendChild(title);
-
-      const desc = document.createElement('p');
-      desc.textContent = postData.description;
-      desc.className = "text-gray-700 mb-2";
-      card.appendChild(desc);
-
-      if (tagsList.length > 0) {
-        const tagsDiv = document.createElement('div');
-        tagsDiv.className = "mb-3";
-        tagsList.forEach(tag => {
-          const tagSpan = document.createElement('span');
-          tagSpan.textContent = tag;
-          tagSpan.className = "inline-block bg-indigo-100 text-indigo-700 text-xs font-semibold mr-2 px-2.5 py-0.5 rounded";
-          tagsDiv.appendChild(tagSpan);
-        });
-        card.appendChild(tagsDiv);
-      }
-
-      // Media display
-      if (postData.type === 'post') {
-        // Image
-        const img = document.createElement('img');
-        img.src = postData.mediaUrl;
-        img.alt = postData.title;
-        img.className = "max-w-full rounded mb-3";
-        card.appendChild(img);
-      } else if (postData.type === 'video') {
-        const video = document.createElement('video');
-        video.src = postData.mediaUrl;
-        video.controls = true;
-        video.className = "max-w-full rounded mb-3";
-        card.appendChild(video);
-      }
-
-      if (isOwner) {
-        const btnGroup = document.createElement('div');
-        btnGroup.className = "flex space-x-3";
-
-        const editBtn = document.createElement('button');
-        editBtn.textContent = "Edit";
-        editBtn.className = "bg-yellow-400 hover:bg-yellow-500 text-white px-4 py-1 rounded";
-        editBtn.onclick = () => startEditPost(postId, postData);
-        btnGroup.appendChild(editBtn);
-
-        const delBtn = document.createElement('button');
-        delBtn.textContent = "Delete";
-        delBtn.className = "bg-red-500 hover:bg-red-600 text-white px-4 py-1 rounded";
-        delBtn.onclick = () => deletePost(postId, postData);
-        btnGroup.appendChild(delBtn);
-
-        card.appendChild(btnGroup);
-      }
-
-      return card;
-    }
-
-    // Fetch posts/videos from Firebase by current user, separate posts/videos
-    function fetchUserPosts() {
-      postsContainer.innerHTML = '';
-      videosContainer.innerHTML = '';
-      uploadMsg.textContent = "Loading your uploads...";
-
-      db.ref('uploads').orderByChild('userId').equalTo(currentUser.uid).once('value', snapshot => {
-        const data = snapshot.val();
-        if (!data) {
-          uploadMsg.textContent = "No uploads yet.";
+        if (!title || !description || !tagsRaw || !file) {
+          status.textContent = "Please fill in all fields and select a media file.";
+          status.className = "text-red-600";
           return;
         }
-        uploadMsg.textContent = "";
 
-        // Separate posts and videos
-        Object.entries(data).forEach(([id, post]) => {
-          const card = createPostCard(id, post);
-          if (post.type === 'post') {
-            postsContainer.appendChild(card);
-          } else if (post.type === 'video') {
-            videosContainer.appendChild(card);
-          }
-        });
-      });
-    }
+        const tags = tagsRaw.split(",").map(t => t.trim()).filter(t => t.length > 0);
 
-    // Upload handler
-    uploadForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      uploadMsg.textContent = '';
-      uploadBtn.disabled = true;
-      uploadBtn.textContent = editingPostId ? "Saving..." : "Uploading...";
+        const fileType = file.type.startsWith("video") ? "video" : file.type.startsWith("image") ? "image" : null;
+        if (!fileType) {
+          status.textContent = "Only image or video files are allowed.";
+          status.className = "text-red-600";
+          return;
+        }
 
-      const title = document.getElementById('title').value.trim();
-      const description = document.getElementById('description').value.trim();
-      const tags = document.getElementById('tags').value.trim();
-      const mediaInput = document.getElementById('media');
+        try {
+          status.textContent = "Uploading media...";
+          status.className = "text-blue-600";
 
-      if (!title || !mediaInput.files.length) {
-        uploadMsg.textContent = "Please provide a title and select a media file.";
-        uploadBtn.disabled = false;
-        uploadBtn.textContent = editingPostId ? "Save" : "Upload";
-        return;
-      }
+          // Create a unique ID for post
+          const newPostRef = push(ref(db, "uploads"));
+          const postId = newPostRef.key;
 
-      const file = mediaInput.files[0];
-      const fileType = file.type;
+          // Storage path: "uploads/userId/postId/filename"
+          const storagePath = `uploads/${userId}/${postId}/${file.name}`;
+          const storageRef = sRef(storage, storagePath);
 
-      // Check file type - image or video
-      const isImage = fileType.startsWith('image/');
-      const isVideo = fileType.startsWith('video/');
-      if (!isImage && !isVideo) {
-        uploadMsg.textContent = "File must be an image or video.";
-        uploadBtn.disabled = false;
-        uploadBtn.textContent = editingPostId ? "Save" : "Upload";
-        return;
-      }
+          // Upload file to Firebase Storage
+          const snapshot = await uploadBytes(storageRef, file);
+          const mediaUrl = await getDownloadURL(snapshot.ref);
 
-      const mediaType = isImage ? 'post' : 'video';
-
-      try {
-        let mediaUrl = null;
-        if (editingPostId) {
-          // Editing - check if new file uploaded or keep old media
-          if (mediaInput.files.length > 0) {
-            // Upload new file and delete old file
-            await deleteMediaFile(editingPostId);
-            mediaUrl = await uploadMediaFile(file);
-          } else {
-            // Keep old mediaUrl from the database
-            mediaUrl = null; // will set below
-          }
-
-          // Update existing post
-          const postRef = db.ref(`uploads/${editingPostId}`);
-
-          const snapshot = await postRef.once('value');
-          const oldData = snapshot.val();
-          if (!oldData) throw new Error("Post not found");
-
-          await postRef.update({
-            title,
-            description,
-            tags,
-            // only update mediaUrl if new file uploaded
-            mediaUrl: mediaUrl || oldData.mediaUrl,
-            type: mediaType,
-            updatedAt: Date.now()
-          });
-
-          uploadMsg.textContent = "Post updated successfully.";
-          editingPostId = null;
-          uploadBtn.textContent = "Upload";
-          uploadForm.reset();
-          fetchUserPosts();
-
-        } else {
-          // New upload
-          mediaUrl = await uploadMediaFile(file);
-
-          // Save post metadata in database
-          const newPostRef = db.ref('uploads').push();
-          await newPostRef.set({
-            userId: currentUser.uid,
+          status.textContent = "Saving post data...";
+          // Save post data to Realtime Database
+          await set(newPostRef, {
             title,
             description,
             tags,
             mediaUrl,
-            type: mediaType,
-            createdAt: Date.now(),
-            updatedAt: Date.now()
+            type: fileType,
+            userId,
+            timestamp: Date.now()
           });
-          uploadMsg.textContent = "Upload successful.";
-          uploadForm.reset();
-          fetchUserPosts();
+
+          status.textContent = "Upload successful!";
+          status.className = "text-green-600";
+          form.reset();
+        } catch (error) {
+          console.error(error);
+          status.textContent = "Upload failed: " + error.message;
+          status.className = "text-red-600";
         }
-
-      } catch (error) {
-        uploadMsg.textContent = "Error: " + error.message;
-      }
-
-      uploadBtn.disabled = false;
-      if (!editingPostId) uploadBtn.textContent = "Upload";
+      });
     });
-
-    // Upload file to Firebase Storage and return URL
-    async function uploadMediaFile(file) {
-      const ext = file.name.split('.').pop();
-      const filename = `${currentUser.uid}/${Date.now()}.${ext}`;
-      const storageRef = storage.ref().child('uploads/' + filename);
-      await storageRef.put(file);
-      return storageRef.getDownloadURL();
-    }
-
-    // Delete media file from Storage based on postId info in db
-    async function deleteMediaFile(postId) {
-      const postRef = db.ref(`uploads/${postId}`);
-      const snapshot = await postRef.once('value');
-      const postData = snapshot.val();
-      if (postData && postData.mediaUrl) {
-        try {
-          // Get storage ref from URL
-          const fileRef = storage.refFromURL(postData.mediaUrl);
-          await fileRef.delete();
-        } catch (e) {
-          console.warn("Failed to delete media file:", e.message);
-        }
-      }
-    }
-
-    // Delete post handler
-    async function deletePost(postId, postData) {
-      if (!confirm("Are you sure you want to delete this post?")) return;
-      try {
-        await deleteMediaFile(postId);
-        await db.ref(`uploads/${postId}`).remove();
-        fetchUserPosts();
-      } catch (error) {
-        alert("Failed to delete post: " + error.message);
-      }
-    }
-
-    // Start editing a post
-    function startEditPost(postId, postData) {
-      editingPostId = postId;
-      document.getElementById('title').value = postData.title;
-      document.getElementById('description').value = postData.description;
-      document.getElementById('tags').value = postData.tags || '';
-      // Media input: cannot set file programmatically, so user must re-upload if changing media
-      uploadBtn.textContent = "Save";
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
   </script>
+</head>
+<body class="bg-gray-50 min-h-screen flex items-center justify-center p-4">
+  <div class="max-w-xl w-full bg-white rounded-lg shadow p-6">
+    <!-- Login prompt -->
+    <div id="login-container" class="text-center">
+      <p class="mb-4 text-gray-700">You must be signed in to upload posts.</p>
+      <a href="login.html" class="inline-block bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 transition">
+        Login / Sign Up
+      </a>
+    </div>
+
+    <!-- Upload form -->
+    <div id="upload-container" class="hidden">
+      <h1 class="text-2xl font-semibold mb-6 text-gray-800">Upload a Post</h1>
+      <form id="upload-form" class="space-y-4">
+        <input type="hidden" id="userId" name="userId" />
+
+        <div>
+          <label for="title" class="block mb-1 font-medium text-gray-700">Title</label>
+          <input type="text" id="title" name="title" required class="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500" />
+        </div>
+
+        <div>
+          <label for="description" class="block mb-1 font-medium text-gray-700">Description</label>
+          <textarea id="description" name="description" rows="3" required class="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+        </div>
+
+        <div>
+          <label for="tags" class="block mb-1 font-medium text-gray-700">Tags (comma separated)</label>
+          <input type="text" id="tags" name="tags" required class="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g. nature, travel, music" />
+        </div>
+
+        <div>
+          <label for="media" class="block mb-1 font-medium text-gray-700">Image or Video</label>
+          <input type="file" id="media" name="media" accept="image/*,video/*" required class="w-full" />
+        </div>
+
+        <button type="submit" class="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition">
+          Upload
+        </button>
+
+        <p id="status" class="mt-2 text-center"></p>
+      </form>
+    </div>
+  </div>
 </body>
-            </html>
+</html>
