@@ -78,7 +78,7 @@
           const postId = newPostRef.key;
 
           // Storage path: "uploads/userId/postId/filename"
-          const storagePath = `uploads/${userId}/${postId}/${file.name}`;
+          const storagePath = `uploads/${userId}/${file.name}`;
           const storageRef = sRef(storage, storagePath);
 
           // Upload file to Firebase Storage
@@ -94,6 +94,7 @@
             mediaUrl,
             type: fileType,
             userId,
+            postId,
             timestamp: Date.now()
           });
 
