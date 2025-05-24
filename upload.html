@@ -51,7 +51,8 @@
         const description = form.description.value.trim();
         const tagsRaw = form.tags.value.trim();
         const file = form.media.files[0];
-        const userId = userIdInput.value;
+        const userId = auth.currentUser.uid;
+        
 
         if (!title || !description || !tagsRaw || !file) {
           status.textContent = "Please fill in all fields and select a media file.";
