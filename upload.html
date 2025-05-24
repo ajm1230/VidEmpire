@@ -74,7 +74,7 @@
           status.className = "text-blue-600";
 
           // Create a unique ID for post
-          const newPostRef = push(ref(db, "uploads"));
+          const newPostRef = push(ref(db, "uploads/" + userId));
           const postId = newPostRef.key;
 
           // Storage path: "uploads/userId/postId/filename"
