@@ -3,72 +3,58 @@
 <head>
   <meta charset="UTF-8">
   <title>Create Channel</title>
-  <script type="module">
-    // Preload firebase-config.js before anything else
-    import "./firebase-config.js";
-  </script>
   <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-storage-compat.js"></script>
+  <!-- Firebase Config -->
+  <script src="firebase-config.js"></script>
 </head>
-<body class="bg-gray-50 text-gray-800 font-sans p-6">
+<body class="bg-gray-100 text-gray-900 p-6 font-sans">..
 
-  <!-- Auth Buttons -->
-  <div class="flex justify-between items-center mb-6">
-    <button id="loginBtn" class="hidden bg-red-500 text-white px-4 py-2 rounded">Login / Sign Up</button>
+  <div class="mb-4">
+    <button id="loginBtn" class="hidden bg-red-600 text-white px-4 py-2 rounded">Login / Sign Up</button>
     <button id="createBtn" class="hidden bg-blue-600 text-white font-bold px-6 py-2 rounded flex items-center space-x-2">
       <span>+</span> <span>Create New Channel</span>
     </button>
   </div>
 
-  <!-- Channel Form -->
-  <form id="channelForm" class="hidden space-y-4 bg-white p-6 rounded shadow max-w-lg mx-auto">
-    <input type="email" id="email" class="w-full border p-2 rounded" readonly />
-    <input type="text" id="uid" class="w-full border p-2 rounded" readonly />
-    
+  <form id="channelForm" class="hidden bg-white shadow rounded p-6 max-w-lg space-y-4">
+    <input type="email" id="email" readonly class="w-full border p-2 rounded" />
+    <input type="text" id="uid" readonly class="w-full border p-2 rounded" />
+
     <div>
-      <label for="channelImage">Channel Profile Image</label>
+      <label for="channelImage" class="block mb-1">Channel Profile Image</label>
       <input type="file" id="channelImage" class="w-full border p-2 rounded" />
       <img id="imagePreview" src="" alt="" class="mt-2 max-h-32 rounded shadow hidden">
     </div>
-    
+
     <input type="text" id="channelName" placeholder="Enter Your Channel Name" class="w-full border p-2 rounded" required />
-    <input type="text" id="channelId" class="w-full border p-2 rounded" required />
+    <input type="text" id="channelId" placeholder="Channel ID" class="w-full border p-2 rounded" required />
 
     <button type="submit" class="bg-green-600 text-white px-4 py-2 rounded">Submit</button>
   </form>
 
-  <script type="module">
-    import { auth, db, storage } from './firebase-config.js';
-    import {
-      ref as dbRef,
-      set,
-      get
-    } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
-    import {
-      ref as sRef,
-      uploadBytes,
-      getDownloadURL
-    } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-storage.js";
-    import {
-      onAuthStateChanged
-    } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
-
+  <script>
     const loginBtn = document.getElementById("loginBtn");
     const createBtn = document.getElementById("createBtn");
     const channelForm = document.getElementById("channelForm");
 
-    onAuthStateChanged(auth, async (user) => {
+    firebase.auth().onAuthStateChanged(async (user) => {
       if (user) {
-        loginBtn.classList.add("hidden");
-        createBtn.classList.remove("hidden");
+        loginBtn.style.display = "none";
+        createBtn.style.display = "block";
 
         createBtn.onclick = () => {
-          channelForm.classList.remove("hidden");
+          channelForm.style.display = "block";
           document.getElementById("email").value = user.email;
           document.getElementById("uid").value = user.uid;
           document.getElementById("channelId").value = generateId();
         };
 
-        document.getElementById("channelImage").addEventListener("change", e => {
+        document.getElementById("channelImage").addEventListener("change", (e) => {
           const file = e.target.files[0];
           if (file) {
             const reader = new FileReader();
@@ -81,27 +67,27 @@
           }
         });
 
-        channelForm.addEventListener("submit", async e => {
+        channelForm.addEventListener("submit", async (e) => {
           e.preventDefault();
           const name = document.getElementById("channelName").value;
           const id = document.getElementById("channelId").value;
           const imageFile = document.getElementById("channelImage").files[0];
 
-          const checkRef = dbRef(db, `channels/${id}`);
-          const existing = await get(checkRef);
-          if (existing.exists()) {
-            alert("Channel ID already exists. Try a different one.");
+          const channelRef = firebase.database().ref(`channels/${id}`);
+          const snapshot = await channelRef.get();
+          if (snapshot.exists()) {
+            alert("Channel ID already exists. Choose another.");
             return;
           }
 
           let imageUrl = "";
           if (imageFile) {
-            const imageStorageRef = sRef(storage, `channel-images/${id}`);
-            await uploadBytes(imageStorageRef, imageFile);
-            imageUrl = await getDownloadURL(imageStorageRef);
+            const storageRef = firebase.storage().ref(`channel-images/${id}`);
+            await storageRef.put(imageFile);
+            imageUrl = await storageRef.getDownloadURL();
           }
 
-          const channelData = {
+          const data = {
             uid: user.uid,
             email: user.email,
             name,
@@ -110,20 +96,23 @@
             createdAt: Date.now()
           };
 
-          await set(checkRef, channelData);
+          await channelRef.set(data);
           alert("Channel created successfully!");
           channelForm.reset();
-          channelForm.classList.add("hidden");
+          channelForm.style.display = "none";
         });
 
       } else {
-        loginBtn.classList.remove("hidden");
-        loginBtn.onclick = () => window.location.href = "login.html";
+        createBtn.style.display = "none";
+        loginBtn.style.display = "block";
+        loginBtn.onclick = () => {
+          window.location.href = "login.html";
+        };
       }
     });
 
     function generateId() {
-      return 'channel-' + Math.random().toString(36).substring(2, 8);
+      return "channel-" + Math.random().toString(36).substring(2, 8);
     }
   </script>
 </body>
