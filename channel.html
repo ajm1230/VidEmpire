@@ -3,197 +3,463 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Manage Channel</title>
-  <script src="firebase-config.js"></script>
-  <script src="https://cdn.tailwindcss.com"></script>
+  <title>Manage Your Channel</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 1rem;
+      max-width: 600px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    h1 {
+      text-align: center;
+    }
+    form {
+      margin-top: 1rem;
+      border: 1px solid #ccc;
+      padding: 1rem;
+      border-radius: 8px;
+      background: #fafafa;
+    }
+    label {
+      display: block;
+      margin-top: 1rem;
+      font-weight: bold;
+    }
+    input[type="text"],
+    input[type="email"],
+    input[type="file"] {
+      width: 100%;
+      padding: 0.5rem;
+      margin-top: 0.3rem;
+      box-sizing: border-box;
+    }
+    input[readonly] {
+      background: #eee;
+    }
+    img#channel-photo-preview {
+      max-width: 150px;
+      max-height: 150px;
+      display: block;
+      margin-top: 0.5rem;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+    .message {
+      margin-top: 0.5rem;
+      font-size: 0.9rem;
+      color: red;
+    }
+    .success-message {
+      color: green;
+    }
+    button {
+      margin-top: 1.5rem;
+      padding: 0.7rem 1.5rem;
+      font-size: 1rem;
+      cursor: pointer;
+      border: none;
+      border-radius: 5px;
+      background-color: #007bff;
+      color: white;
+      transition: background-color 0.3s ease;
+    }
+    button:disabled {
+      background-color: #999;
+      cursor: not-allowed;
+    }
+    #delete-button {
+      background-color: #dc3545;
+      margin-left: 0.5rem;
+    }
+    #edit-button {
+      background-color: #28a745;
+      margin-left: 0.5rem;
+    }
+    .flex-row {
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      margin-top: 1rem;
+    }
+    .flex-row button {
+      margin-left: 0;
+    }
+    #login-section {
+      text-align: center;
+      margin-top: 3rem;
+    }
+    #login-section button {
+      background-color: #28a745;
+      padding: 0.8rem 2rem;
+      font-size: 1.2rem;
+    }
+  </style>
 </head>
-<body class="bg-gray-100 min-h-screen p-4">
-  <!-- Login Prompt -->new2
-  <div id="login-container" class="flex items-center justify-center min-h-screen">
-    <div class="text-center bg-white p-6 rounded-lg shadow">
-      <p class="mb-4 text-gray-700">You must be signed in to manage your channel.</p>
-      <a href="login.html" class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 transition">Login / Sign Up</a>
+<body>
+  <h1>Manage Your Channel</h1>new3
+
+  <div id="login-section" style="display:none;">
+    <p>You must be logged in to create or manage your channel.</p>
+    <button id="btn-login">Login / Signup</button>
+  </div>
+
+  <form id="channel-form" style="display:none;" novalidate>
+    <label for="channelName">Channel Name *</label>
+    <input type="text" id="channelName" name="channelName" required minlength="3" maxlength="50" />
+
+    <label for="channelPhoto">Channel Photo (Logo) *</label>
+    <input type="file" id="channelPhoto" accept="image/*" />
+    <img id="channel-photo-preview" alt="Channel Photo Preview" style="display:none;" />
+
+    <label for="channelId">Channel ID *</label>
+    <input type="text" id="channelId" name="channelId" required pattern="^[a-zA-Z0-9_-]{3,30}$" />
+    <div id="channelId-message" class="message" aria-live="polite"></div>
+
+    <label for="email">Your Email</label>
+    <input type="email" id="email" readonly />
+
+    <label for="uid">Your User ID (UID)</label>
+    <input type="text" id="uid" readonly />
+
+    <div class="flex-row">
+      <button type="submit" id="submit-button">Create Channel</button>
+      <button type="button" id="edit-button" style="display:none;">Edit</button>
+      <button type="button" id="delete-button" style="display:none;">Delete Channel</button>
     </div>
-  </div>
 
-  <!-- Channel Management -->
-  <div id="channel-container" class="hidden max-w-xl mx-auto bg-white p-6 rounded-lg shadow">
-    <h2 class="text-2xl font-bold mb-4">Manage Your Channel</h2>
-    <form id="channel-form" class="space-y-4">
-      <input type="hidden" id="uid" name="uid" />
-      <div>
-        <label class="block mb-1">Channel Name</label>
-        <input type="text" id="channel-name" name="channelName" required class="w-full border rounded px-3 py-2" />
-      </div>
-      <div>
-        <label class="block mb-1">Channel ID</label>
-        <input type="text" id="channel-id" name="channelId" required class="w-full border rounded px-3 py-2" />
-        <p id="id-status" class="text-sm mt-1"></p>
-      </div>
-      <div>
-        <label class="block mb-1">Channel Photo</label>
-        <input type="file" id="channel-photo" name="channelPhoto" accept="image/*" class="w-full" />
-        <img id="photo-preview" class="mt-2 w-32 h-32 object-cover rounded hidden" />
-      </div>
-      <div>
-        <label class="block mb-1">Email</label>
-        <input type="email" id="email" name="email" readonly class="w-full border rounded px-3 py-2 bg-gray-100" />
-      </div>
-      <div>
-        <label class="block mb-1">User ID (UID)</label>
-        <input type="text" id="user-id" name="userId" readonly class="w-full border rounded px-3 py-2 bg-gray-100" />
-      </div>
-      <p id="form-status" class="text-sm mt-2"></p>
-      <div class="flex justify-between items-center">
-        <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Create Channel</button>
-        <button type="button" id="delete-channel" class="text-red-600 hover:underline hidden">Delete Channel</button>
-      </div>
-    </form>
-  </div>
+    <div id="form-message" class="message" aria-live="polite"></div>
+  </form>
 
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
-    import { getDatabase, ref, set, get, child, remove } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
-    import { getStorage, ref as sRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-storage.js";
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  <!-- Include your firebase-config.js here -->
+  <script src="firebase-config.js"></script>
 
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db = getDatabase(app);
-    const storage = getStorage(app);
+  <script>
+    // Wait for Firebase config to load and initialize Firebase App, Auth and Database
+    const auth = firebase.auth();
+    const database = firebase.database();
 
-    const loginContainer = document.getElementById("login-container");
-    const channelContainer = document.getElementById("channel-container");
-    const form = document.getElementById("channel-form");
-    const uidInput = document.getElementById("uid");
-    const emailInput = document.getElementById("email");
-    const userIdInput = document.getElementById("user-id");
-    const channelIdInput = document.getElementById("channel-id");
-    const channelNameInput = document.getElementById("channel-name");
-    const channelPhotoInput = document.getElementById("channel-photo");
-    const photoPreview = document.getElementById("photo-preview");
-    const idStatus = document.getElementById("id-status");
-    const formStatus = document.getElementById("form-status");
-    const deleteBtn = document.getElementById("delete-channel");
+    const loginSection = document.getElementById('login-section');
+    const btnLogin = document.getElementById('btn-login');
+    const form = document.getElementById('channel-form');
+    const submitBtn = document.getElementById('submit-button');
+    const editBtn = document.getElementById('edit-button');
+    const deleteBtn = document.getElementById('delete-button');
+    const formMessage = document.getElementById('form-message');
+
+    const channelNameInput = document.getElementById('channelName');
+    const channelPhotoInput = document.getElementById('channelPhoto');
+    const channelPhotoPreview = document.getElementById('channel-photo-preview');
+    const channelIdInput = document.getElementById('channelId');
+    const channelIdMessage = document.getElementById('channelId-message');
+    const emailInput = document.getElementById('email');
+    const uidInput = document.getElementById('uid');
 
     let currentUser = null;
-    let existingChannelId = null;
+    let currentChannelData = null; // Will hold user's channel data if exists
+    let channelPhotoFile = null;
+    let isEditing = false;
 
-    onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        currentUser = user;
-        loginContainer.classList.add("hidden");
-        channelContainer.classList.remove("hidden");
-        uidInput.value = user.uid;
-        emailInput.value = user.email;
-        userIdInput.value = user.uid;
-
-        const userChannelRef = ref(db, `channels/${user.uid}`);
-        const snapshot = await get(userChannelRef);
-        if (snapshot.exists()) {
-          const data = snapshot.val();
-          existingChannelId = data.channelId;
-          channelIdInput.value = data.channelId;
-          channelNameInput.value = data.channelName;
-          if (data.photoUrl) {
-            photoPreview.src = data.photoUrl;
-            photoPreview.classList.remove("hidden");
-          }
-          channelIdInput.disabled = true;
-          form.querySelector("button[type='submit']").textContent = "Update Channel";
-          deleteBtn.classList.remove("hidden");
-        }
-      } else {
-        loginContainer.classList.remove("hidden");
-        channelContainer.classList.add("hidden");
-      }
+    // Redirect to login page
+    btnLogin.addEventListener('click', () => {
+      window.location.href = 'login.html';
     });
 
-    channelPhotoInput.addEventListener("change", () => {
+    // Preview channel photo on upload
+    channelPhotoInput.addEventListener('change', () => {
       const file = channelPhotoInput.files[0];
       if (file) {
+        if (!file.type.startsWith('image/')) {
+          alert('Please select a valid image file.');
+          channelPhotoInput.value = '';
+          return;
+        }
+        channelPhotoFile = file;
         const reader = new FileReader();
-        reader.onload = () => {
-          photoPreview.src = reader.result;
-          photoPreview.classList.remove("hidden");
+        reader.onload = e => {
+          channelPhotoPreview.src = e.target.result;
+          channelPhotoPreview.style.display = 'block';
         };
         reader.readAsDataURL(file);
-      }
-    });
-
-    channelIdInput.addEventListener("input", async () => {
-      const id = channelIdInput.value.trim();
-      if (!id) {
-        idStatus.textContent = "";
-        return;
-      }
-      const idRef = ref(db, `channelIds/${id}`);
-      const snapshot = await get(idRef);
-      if (snapshot.exists() && id !== existingChannelId) {
-        idStatus.textContent = "Channel ID already exists. Try a different one.";
-        idStatus.className = "text-red-600 text-sm";
-        form.querySelector("button[type='submit']").disabled = true;
       } else {
-        idStatus.textContent = "Channel ID is available.";
-        idStatus.className = "text-green-600 text-sm";
-        form.querySelector("button[type='submit']").disabled = false;
+        channelPhotoFile = null;
+        channelPhotoPreview.style.display = 'none';
       }
     });
 
-    form.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      formStatus.textContent = "";
-      const channelId = channelIdInput.value.trim();
-      const channelName = channelNameInput.value.trim();
-      const file = channelPhotoInput.files[0];
+    // Check if channel ID exists in DB (real-time check on input change)
+    let channelIdCheckTimeout = null;
+    channelIdInput.addEventListener('input', () => {
+      channelIdMessage.textContent = '';
+      if (channelIdCheckTimeout) clearTimeout(channelIdCheckTimeout);
+      const val = channelIdInput.value.trim();
+      if (!val) return;
+      if (!/^[a-zA-Z0-9_-]{3,30}$/.test(val)) {
+        channelIdMessage.textContent = 'Channel ID must be 3-30 chars: letters, numbers, _ or -';
+        return;
+      }
+      // Debounce to reduce DB calls
+      channelIdCheckTimeout = setTimeout(() => checkChannelIdExists(val), 600);
+    });
 
-      if (!channelId || !channelName) {
-        formStatus.textContent = "Please fill all required fields.";
-        formStatus.className = "text-red-600 text-sm";
+    async function checkChannelIdExists(id) {
+      if (!id) return;
+      if (!currentUser) return;
+      if (currentChannelData && currentChannelData.channelId === id) {
+        // Same ID as user's own channel, no error
+        channelIdMessage.textContent = '';
+        return;
+      }
+      try {
+        const snapshot = await database.ref('channels/' + id).get();
+        if (snapshot.exists()) {
+          channelIdMessage.textContent = 'Try different Channel ID, it already exists.';
+        } else {
+          channelIdMessage.textContent = '';
+        }
+      } catch (err) {
+        console.error('Error checking channel ID:', err);
+        channelIdMessage.textContent = 'Error checking channel ID uniqueness.';
+      }
+    }
+
+    // Initialize app
+    auth.onAuthStateChanged(async user => {
+      currentUser = user;
+      if (!user) {
+        // Not logged in
+        loginSection.style.display = 'block';
+        form.style.display = 'none';
+        return;
+      }
+      loginSection.style.display = 'none';
+      form.style.display = 'block';
+
+      emailInput.value = user.email || '';
+      uidInput.value = user.uid;
+
+      // Check if user has existing channel
+      await loadUserChannel(user.uid);
+    });
+
+    async function loadUserChannel(uid) {
+      formMessage.textContent = '';
+      // channels are stored by channelId key, but each channel has uid property
+      // So we have to scan all channels to find the one with this uid
+      try {
+        const snapshot = await database.ref('channels').orderByChild('uid').equalTo(uid).get();
+        if (snapshot.exists()) {
+          // User has a channel
+          const val = snapshot.val();
+          // Extract the channel data (there will be one or zero)
+          const channelId = Object.keys(val)[0];
+          currentChannelData = val[channelId];
+          currentChannelData.channelId = channelId;
+
+          // Show data in form and disable editing initially
+          populateForm(currentChannelData);
+          setFormMode('view');
+        } else {
+          // No channel found for this user, clear form for create mode
+          currentChannelData = null;
+          clearForm();
+          setFormMode('create');
+        }
+      } catch (err) {
+        console.error('Error loading user channel:', err);
+        formMessage.textContent = 'Error loading channel data. Try refresh.';
+      }
+    }
+
+    // Fill the form inputs with channel data, disables inputs
+    function populateForm(data) {
+      channelNameInput.value = data.channelName || '';
+      channelIdInput.value = data.channelId || '';
+      emailInput.value = currentUser.email || '';
+      uidInput.value = currentUser.uid;
+
+      // Show photo preview
+      if (data.channelPhotoURL) {
+        channelPhotoPreview.src = data.channelPhotoURL;
+        channelPhotoPreview.style.display = 'block';
+      } else {
+        channelPhotoPreview.style.display = 'none';
+      }
+      channelPhotoFile = null; // reset file since we loaded existing URL
+      channelIdMessage.textContent = '';
+      formMessage.textContent = '';
+    }
+
+    function clearForm() {
+      form.reset();
+      channelPhotoPreview.style.display = 'none';
+      channelIdMessage.textContent = '';
+      formMessage.textContent = '';
+      channelPhotoFile = null;
+    }
+
+    // Modes:
+    // create: new channel, submit button says "Create Channel", inputs enabled
+    // view: channel exists, inputs disabled, submit button hidden, show Edit & Delete buttons
+    // edit: editing existing channel, inputs enabled, submit button says "Update Channel"
+    function setFormMode(mode) {
+      if (mode === 'create') {
+        isEditing = false;
+        channelNameInput.disabled = false;
+        channelIdInput.disabled = false;
+        channelPhotoInput.disabled = false;
+
+        submitBtn.style.display = 'inline-block';
+        submitBtn.textContent = 'Create Channel';
+
+        editBtn.style.display = 'none';
+        deleteBtn.style.display = 'none';
+
+      } else if (mode === 'view') {
+        isEditing = false;
+        channelNameInput.disabled = true;
+        channelIdInput.disabled = true;
+        channelPhotoInput.disabled = true;
+
+        submitBtn.style.display = 'none';
+        editBtn.style.display = 'inline-block';
+        deleteBtn.style.display = 'inline-block';
+
+      } else if (mode === 'edit') {
+        isEditing = true;
+        channelNameInput.disabled = false;
+        channelIdInput.disabled = false;
+        channelPhotoInput.disabled = false;
+
+        submitBtn.style.display = 'inline-block';
+        submitBtn.textContent = 'Update Channel';
+
+        editBtn.style.display = 'none';
+        deleteBtn.style.display = 'none';
+      }
+      formMessage.textContent = '';
+      channelIdMessage.textContent = '';
+    }
+
+    // Edit button clicked - switch to edit mode
+    editBtn.addEventListener('click', () => {
+      setFormMode('edit');
+    });
+
+    // Delete button clicked - confirm then delete
+    deleteBtn.addEventListener('click', async () => {
+      if (!confirm('Are you sure you want to delete your channel? This action cannot be undone.')) {
+        return;
+      }
+      if (!currentChannelData || !currentChannelData.channelId) {
+        formMessage.textContent = 'No channel data found to delete.';
+        return;
+      }
+      formMessage.textContent = 'Deleting channel... Please wait.';
+      try {
+        // Remove channel node
+        await database.ref('channels/' + currentChannelData.channelId).remove();
+
+        // Reset UI
+        currentChannelData = null;
+        clearForm();
+        setFormMode('create');
+        formMessage.textContent = 'Channel deleted successfully.';
+      } catch (err) {
+        console.error('Delete error:', err);
+        formMessage.textContent = 'Error deleting channel. Try again.';
+      }
+    });
+
+    // Handle form submit (create or update)
+    form.addEventListener('submit', async e => {
+      e.preventDefault();
+      formMessage.textContent = '';
+      submitBtn.disabled = true;
+
+      const channelName = channelNameInput.value.trim();
+      const channelId = channelIdInput.value.trim();
+      const email = emailInput.value;
+      const uid = uidInput.value;
+
+      // Basic validations
+      if (!channelName || channelName.length < 3) {
+        formMessage.textContent = 'Please enter a valid channel name (min 3 chars).';
+        submitBtn.disabled = false;
+        return;
+      }
+      if (!/^[a-zA-Z0-9_-]{3,30}$/.test(channelId)) {
+        formMessage.textContent = 'Channel ID must be 3-30 chars: letters, numbers, _ or -';
+        submitBtn.disabled = false;
+        return;
+      }
+      if (channelIdMessage.textContent) {
+        formMessage.textContent = 'Please fix the Channel ID error first.';
+        submitBtn.disabled = false;
         return;
       }
 
-      let photoUrl = "";
-      if (file) {
-        const storagePath = `channel_photos/${currentUser.uid}/${file.name}`;
-        const storageRef = sRef(storage, storagePath);
-        const snapshot = await uploadBytes(storageRef, file);
-        photoUrl = await getDownloadURL(snapshot.ref);
+      try {
+        // Check uniqueness of channel ID (for create or if changed on update)
+        if (
+          (!currentChannelData || currentChannelData.channelId !== channelId)
+        ) {
+          const snap = await database.ref('channels/' + channelId).get();
+          if (snap.exists()) {
+            formMessage.textContent = 'Try different Channel ID, it already exists.';
+            submitBtn.disabled = false;
+            return;
+          }
+        }
+
+        formMessage.textContent = isEditing ? 'Updating channel...' : 'Uploading channel...';
+
+        // Upload image file if changed
+        let photoURL = currentChannelData ? currentChannelData.channelPhotoURL || '' : '';
+        if (channelPhotoFile) {
+          // Upload to Firebase Storage (optional enhancement)
+          // For now, convert to base64 URL (simple for demo but not recommended for large images)
+          photoURL = await fileToBase64(channelPhotoFile);
+        }
+
+        // Data to save
+        const channelDataToSave = {
+          channelName,
+          channelPhotoURL: photoURL,
+          channelId,
+          email,
+          uid
+        };
+
+        // Save/update channel data under channels/{channelId}
+        await database.ref('channels/' + channelId).set(channelDataToSave);
+
+        currentChannelData = {...channelDataToSave};
+        currentChannelData.channelId = channelId;
+
+        setFormMode('view');
+        formMessage.textContent = isEditing ? 'Channel updated successfully.' : 'Channel created successfully.';
+        submitBtn.disabled = false;
+      } catch (err) {
+        console.error('Error saving channel:', err);
+        formMessage.textContent = 'Error saving channel data. Try again.';
+        submitBtn.disabled = false;
       }
-
-      const channelData = {
-        channelId,
-        channelName,
-        photoUrl,
-        email: currentUser.email,
-        uid: currentUser.uid,
-        timestamp: Date.now()
-      };
-
-      const userChannelRef = ref(db, `channels/${currentUser.uid}`);
-      await set(userChannelRef, channelData);
-      const idRef = ref(db, `channelIds/${channelId}`);
-      await set(idRef, currentUser.uid);
-
-      formStatus.textContent = "Channel saved successfully!";
-      formStatus.className = "text-green-600 text-sm";
     });
 
-    deleteBtn.addEventListener("click", async () => {
-      if (confirm("Are you sure you want to delete your channel?")) {
-        const userChannelRef = ref(db, `channels/${currentUser.uid}`);
-        const idRef = ref(db, `channelIds/${channelIdInput.value.trim()}`);
-        await remove(userChannelRef);
-        await remove(idRef);
-        form.reset();
-        photoPreview.classList.add("hidden");
-        form.querySelector("button[type='submit']").textContent = "Create Channel";
-        deleteBtn.classList.add("hidden");
-        channelIdInput.disabled = false;
-        formStatus.textContent = "Channel deleted successfully.";
-        formStatus.className = "text-green-600 text-sm";
-      }
-    });
+    // Helper to convert file to base64 URL (for demo upload)
+    function fileToBase64(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = e => resolve(e.target.result);
+        reader.onerror = err => reject(err);
+        reader.readAsDataURL(file);
+      });
+    }
   </script>
 </body>
-</html>
+  </html>
