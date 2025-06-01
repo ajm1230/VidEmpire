@@ -1,104 +1,228 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Media Upload</title>
-  <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore.js"></script>
- 
-  <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-storage.js"></script>
- <script src="firebase-config.js" ></script>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <style>
-    #uploadModal {
-      background-color: rgba(0, 0, 0, 0.6);
-    }
-  </style>
-</head>
-<body class="bg-gray-100 font-sans">
-  <div class="container mx-auto px-4 py-6">
-    <div id="auth-section" class="flex justify-end mb-4"></div>
-    <div id="dashboard" class="hidden">
-      <div class="flex justify-between items-center mb-6">
-        <h1 class="text-2xl font-bold">Media Upload Dashboard</h1>
-        <button id="open-upload" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Upload Media</button>
-      </div>
-      <div class="flex gap-4 mb-6">
-        <button id="toggle-posts" class="bg-gray-300 hover:bg-gray-400 px-4 py-2 rounded">Posts</button>
-        <button id="toggle-videos" class="bg-gray-300 hover:bg-gray-400 px-4 py-2 rounded">Videos</button>
-      </div>
-      <div id="posts-section" class="space-y-4"></div>
-      <div id="videos-section" class="space-y-4 hidden"></div>
-    </div>
-  </div>
-
-  <!-- Upload Modal -->
-  <div id="uploadModal" class="fixed inset-0 hidden flex items-center justify-center z-50">
-    <div class="bg-white p-6 rounded shadow-md w-full max-w-md relative">
-      <button id="close-upload" class="absolute top-2 right-2 text-gray-500 hover:text-black">&times;</button>
-      <h2 class="text-xl font-semibold mb-4">Upload / Edit Post</h2>
-      <form id="upload-form" class="space-y-4">
-        <input type="text" name="title" placeholder="Title" class="w-full border rounded px-3 py-2" required />
-        <textarea name="description" placeholder="Description" class="w-full border rounded px-3 py-2" required></textarea>
-        <input type="text" name="tags" placeholder="Tags (comma-separated)" class="w-full border rounded px-3 py-2" required />
-        <input type="file" name="media" accept="image/*,video/*" class="w-full" required />
-        <p id="upload-status" class="text-sm"></p>
-        <button type="submit" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded">Submit</button>
-      </form>
-    </div>
-  </div>
-
-  <script>
-    const firebaseConfig = {
-      // Replace with your Firebase config
-    };
-    firebase.initializeApp(firebaseConfig);
-    const auth = firebase.auth();
-    const db = firebase.firestore();
-    const storage = firebase.storage();
-
-    const authSection = document.getElementById("auth-section");
-    const dashboard = document.getElementById("dashboard");
-    const uploadModal = document.getElementById("uploadModal");
-    const openUploadBtn = document.getElementById("open-upload");
-    const closeUploadBtn = document.getElementById("close-upload");
-    const uploadForm = document.getElementById("upload-form");
-    const postsSection = document.getElementById("posts-section");
-    const videosSection = document.getElementById("videos-section");
-    const togglePostsBtn = document.getElementById("toggle-posts");
-    const toggleVideosBtn = document.getElementById("toggle-videos");
-
-    auth.onAuthStateChanged(user => {
-      if (!user) {
-        authSection.innerHTML = '<a href="login.html" class="bg-blue-500 text-white px-4 py-2 rounded">Login / Signup</a>';
-      } else {
-        authSection.innerHTML = `<span class="mr-2">Logged in as ${user.email}</span>`;
-        dashboard.classList.remove("hidden");
-        fetchUserMedia(user.uid);
-      }
-    });
-
-    openUploadBtn.onclick = () => {
-      uploadForm.reset();
-      uploadModal.classList.remove("hidden");
-    };
-    closeUploadBtn.onclick = () => uploadModal.classList.add("hidden");
-
-    togglePostsBtn.onclick = () => {
-      postsSection.classList.remove("hidden");
-      videosSection.classList.add("hidden");
-    };
-    toggleVideosBtn.onclick = () => {
-      postsSection.classList.add("hidden");
-      videosSection.classList.remove("hidden");
-    };
-
-    uploadForm.onsubmit = async (e) => {
-      e.preventDefault();
-      const user = auth.currentUser;
-      if (!user) return;
-      const formData = new FormData(uploadForm);
-      const title = formData.get("title");
-      const description = formData.get("
+<!DOCTYPE html>    
+<html lang="en">    
+<head>    
+  <meta charset="UTF-8" />    
+  <meta name="viewport" content="width=device-width, initial-scale=1" />    
+  <title>Upload Post</title>    
+  <script src="firebase-config.js"></script>    
+  <script src="https://cdn.tailwindcss.com"></script>    
+</head>    
+<body class="bg-gray-100 min-h-screen p-4">    
+  <!-- Login Container -->    
+  <div id="login-container" class="flex items-center justify-center min-h-screen">    
+    <div class="text-center bg-white p-6 rounded-lg shadow">    
+      <p class="mb-4 text-gray-700">You must be signed in to view or upload posts.</p>    
+      <a href="login.html" class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 transition">Login / Sign Up</a>    
+    </div>    
+  </div>  <!-- Main Interface -->  <div id="main-container" class="hidden">    
+    <!-- Toggle Section -->    
+    <div class="flex justify-center space-x-4 mb-6">    
+      <button id="toggle-posts" class="px-4 py-2 bg-blue-600 text-white rounded shadow">Posts</button>    
+      <button id="toggle-videos" class="px-4 py-2 bg-gray-300 text-gray-800 rounded shadow">Videos</button>    
+    </div><!-- Posts and Videos Display -->    
+<div class="grid gap-4 max-w-4xl mx-auto">    
+  <div id="posts-section" class="grid grid-cols-1 sm:grid-cols-2 gap-4"></div>    
+  <div id="videos-section" class="grid grid-cols-1 sm:grid-cols-2 gap-4 hidden"></div>    
+</div>    
+    
+<!-- Upload Modal Trigger -->    
+<button id="open-upload-modal" class="fixed bottom-6 right-6 bg-blue-600 text-white rounded-full w-14 h-14 flex items-center justify-center shadow-lg text-3xl">+</button>    
+    
+<!-- Upload Modal -->    
+<div id="upload-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">    
+  <div class="bg-white p-6 rounded-lg shadow-lg w-full max-w-md relative">    
+    <form id="upload-form" class="space-y-4">    
+      <input type="hidden" id="userId" name="userId" />    
+      <div>    
+        <label class="block mb-1">Title</label>    
+        <input type="text" id="title" name="title" required class="w-full border rounded px-3 py-2">    
+      </div>    
+      <div>    
+        <label class="block mb-1">Description</label>    
+        <textarea id="description" name="description" rows="3" required class="w-full border rounded px-3 py-2"></textarea>    
+      </div>    
+      <div>    
+        <label class="block mb-1">Tags (comma separated)</label>    
+        <input type="text" id="tags" name="tags" required class="w-full border rounded px-3 py-2">    
+      </div>    
+      <div>    
+        <label class="block mb-1">Media File</label>    
+        <input type="file" id="media" name="media" accept="image/*,video/*" required class="w-full">    
+      </div>    
+      <p id="status" class="text-center text-sm"></p>    
+      <div class="flex justify-between items-center">    
+        <button type="button" id="cancel-upload" class="text-gray-600 hover:text-red-600">Cancel</button>    
+        <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Upload</button>    
+      </div>    
+    </form>    
+  </div>    
+</div>    
+    
+  </div>  <script type="module">    
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";    
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";    
+    import { getDatabase, ref, push, set, onValue, update, remove } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";    
+    import { getStorage, ref as sRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-storage.js";    
+    
+    const app = initializeApp(firebaseConfig);    
+    const auth = getAuth(app);    
+    const db = getDatabase(app);    
+    const storage = getStorage(app);    
+    
+    const loginContainer = document.getElementById("login-container");    
+    const mainContainer = document.getElementById("main-container");    
+    const postsSection = document.getElementById("posts-section");    
+    const videosSection = document.getElementById("videos-section");    
+    const openUploadModal = document.getElementById("open-upload-modal");    
+    const uploadModal = document.getElementById("upload-modal");    
+    const cancelUpload = document.getElementById("cancel-upload");    
+    const form = document.getElementById("upload-form");    
+    const status = document.getElementById("status");    
+    const userIdInput = document.getElementById("userId");    
+    
+    function createPostCard(post) {    
+      const card = document.createElement("div");    
+      card.className = "bg-white rounded shadow p-4";    
+    
+      card.innerHTML = `    
+        <h3 class="text-lg font-bold mb-1">${post.title}</h3>    
+        <p class="text-sm text-gray-600 mb-2">${post.description}</p>    
+        <${post.type === "video" ? "video controls" : "img"} src="${post.mediaUrl}" class="w-full h-48 object-cover rounded mb-2"></${post.type === "video" ? "video" : "img"}>    
+        <div class="flex justify-between items-center">    
+          <button data-id="${post.postId}" class="edit-btn text-blue-600 hover:underline">Edit</button>    
+          <button data-id="${post.postId}" class="delete-btn text-red-600 hover:underline">Delete</button>    
+        </div>    
+      `;    
+      return card;    
+    }    
+    
+    function loadPosts(userId) {    
+      const userRef = ref(db, `uploads/${userId}`);    
+      onValue(userRef, snapshot => {    
+        postsSection.innerHTML = "";    
+        videosSection.innerHTML = "";    
+        snapshot.forEach(child => {    
+          const post = child.val();    
+          const card = createPostCard(post);    
+          if (post.type === "image") postsSection.appendChild(card);    
+          else if (post.type === "video") videosSection.appendChild(card);    
+        });    
+      });    
+    }    
+    
+    function handleDelete(postId, userId) {    
+      const postRef = ref(db, `uploads/${userId}/${postId}`);    
+      remove(postRef);    
+    }    
+    
+    function handleEdit(postId, userId) {    
+      const postRef = ref(db, `uploads/${userId}/${postId}`);    
+      onValue(postRef, snapshot => {    
+        const post = snapshot.val();    
+        if (post) {    
+          uploadModal.classList.remove("hidden");    
+          form.title.value = post.title;    
+          form.description.value = post.description;    
+          form.tags.value = post.tags.join(", ");    
+          form.setAttribute("data-edit-id", postId);    
+        }    
+      }, { onlyOnce: true });    
+    }    
+    
+    document.addEventListener("click", e => {    
+      if (e.target.classList.contains("delete-btn")) {    
+        const postId = e.target.getAttribute("data-id");    
+        handleDelete(postId, auth.currentUser.uid);    
+      }    
+      if (e.target.classList.contains("edit-btn")) {    
+        const postId = e.target.getAttribute("data-id");    
+        handleEdit(postId, auth.currentUser.uid);    
+      }    
+    });    
+    
+    onAuthStateChanged(auth, user => {    
+      if (user) {    
+        loginContainer.classList.add("hidden");    
+        mainContainer.classList.remove("hidden");    
+        userIdInput.value = user.uid;    
+        loadPosts(user.uid);    
+      }    
+    });    
+    
+    openUploadModal.addEventListener("click", () => {    
+      uploadModal.classList.remove("hidden");    
+    });    
+    
+    cancelUpload.addEventListener("click", () => {    
+      if (confirm("Are you sure you want to cancel?")) {    
+        uploadModal.classList.add("hidden");    
+        form.reset();    
+        status.textContent = "";    
+      }    
+    });    
+    
+    document.addEventListener("click", (e) => {    
+      if (e.target === uploadModal) {    
+        // Do not close modal on outside click    
+      }    
+    });    
+    
+    document.getElementById("toggle-posts").addEventListener("click", () => {    
+      postsSection.parentElement.classList.remove("hidden");    
+      videosSection.parentElement.classList.add("hidden");    
+    });    
+    
+    document.getElementById("toggle-videos").addEventListener("click", () => {    
+      videosSection.parentElement.classList.remove("hidden");    
+      postsSection.parentElement.classList.add("hidden");    
+    });    
+    
+    form.addEventListener("submit", async (e) => {    
+      e.preventDefault();    
+      status.textContent = "";    
+    
+      const title = form.title.value.trim();    
+      const description = form.description.value.trim();    
+      const tags = form.tags.value.trim().split(",").map(t => t.trim()).filter(Boolean);    
+      const file = form.media.files[0];    
+      const userId = auth.currentUser.uid;    
+      const editId = form.getAttribute("data-edit-id");    
+    
+      if (!title || !description || !tags.length || (!file && !editId)) {    
+        status.textContent = "Please fill all required fields.";    
+        status.className = "text-red-600 text-sm";    
+        return;    
+      }    
+    
+      let mediaUrl = null;    
+      let fileType = file ? (file.type.startsWith("video") ? "video" : "image") : null;    
+    
+      if (file) {    
+        status.textContent = "Uploading media...";    
+        const storagePath = `uploads/${userId}/${file.name}`;    
+        const storageRef = sRef(storage, storagePath);    
+        const snapshot = await uploadBytes(storageRef, file);    
+        mediaUrl = await getDownloadURL(snapshot.ref);    
+      }    
+    
+      const postData = {    
+        title, description, tags, userId, timestamp: Date.now(),    
+        ...(mediaUrl && { mediaUrl }),    
+        ...(fileType && { type: fileType })    
+      };    
+    
+      if (editId) {    
+        await update(ref(db, `uploads/${userId}/${editId}`), postData);    
+        form.removeAttribute("data-edit-id");    
+      } else {    
+        const newRef = push(ref(db, `uploads/${userId}`));    
+        await set(newRef, { ...postData, postId: newRef.key });    
+      }    
+    
+      status.textContent = "Post saved successfully!";    
+      status.className = "text-green-600 text-sm";    
+      form.reset();    
+      uploadModal.classList.add("hidden");    
+    });    
+  </script></body>    
+  </html>
