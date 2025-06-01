@@ -1,258 +1,110 @@
 <!DOCTYPE html>
-<html lang="en" >
+<html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>User Content Dashboard</title>
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-storage-compat.js"></script>
-  <script src="firebase-config.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Media Upload</title>
+  <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app.js"></script>
+  <script src="firebase-config.js" ></script>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    /* Smooth fade for toggle content */
-    .fade-enter {
-      opacity: 0;
-      transform: translateX(20px);
-    }
-    .fade-enter-active {
-      opacity: 1;
-      transform: translateX(0);
-      transition: opacity 300ms, transform 300ms;
-    }
-    .fade-exit {
-      opacity: 1;
-      transform: translateX(0);
-    }
-    .fade-exit-active {
-      opacity: 0;
-      transform: translateX(-20px);
-      transition: opacity 300ms, transform 300ms;
+    #uploadModal {
+      background-color: rgba(0, 0, 0, 0.6);
     }
   </style>
 </head>
-<body class="bg-gray-100 min-h-screen flex flex-col items-center p-4">
-
-  <!-- Login Section -->
-  <div id="loginContainer" class="max-w-md w-full bg-white rounded-md shadow-md p-6">
-    <h2 class="text-2xl font-semibold mb-4 text-center">Login</h2>
-    <button id="loginBtn" class="w-full bg-pink-600 text-white py-2 rounded hover:bg-pink-700 transition">Login with Google</button>
-  </div>
-
-  <!-- Main Content Section (hidden until login) -->
-  <div id="mainContainer" class="hidden max-w-7xl w-full mt-6 bg-white rounded-md shadow-md p-4 flex flex-col">
-
-    <!-- User ID (hidden) -->
-    <input type="hidden" id="userIdInput" />
-
-    <!-- Toggle Buttons -->
-    <div class="flex justify-center space-x-4 mb-6">
-      <button data-tab="posts" class="tabBtn bg-pink-500 text-white px-4 py-2 rounded shadow hover:bg-pink-600 transition">Posts</button>
-      <button data-tab="videos" class="tabBtn bg-gray-300 text-gray-700 px-4 py-2 rounded shadow hover:bg-pink-100 transition">Videos</button>
-      <button data-tab="shorts" class="tabBtn bg-gray-300 text-gray-700 px-4 py-2 rounded shadow hover:bg-pink-100 transition">Shorts</button>
+<body class="bg-gray-100 font-sans">
+  <div class="container mx-auto px-4 py-6">
+    <div class="flex justify-between items-center mb-6">
+      <h1 class="text-2xl font-bold">Media Upload Dashboard</h1>
+      <button id="open-upload" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Upload Media</button>
     </div>
 
-    <!-- Sections Container -->
-    <div class="flex flex-row space-x-6 justify-center w-full max-w-full overflow-x-auto">
+    <div class="flex gap-4 mb-6">
+      <button id="toggle-posts" class="bg-gray-300 hover:bg-gray-400 px-4 py-2 rounded">Posts</button>
+      <button id="toggle-videos" class="bg-gray-300 hover:bg-gray-400 px-4 py-2 rounded">Videos</button>
+    </div>
 
-      <!-- Posts Section -->
-      <div id="postsSection" class="tabSection flex flex-wrap gap-4 justify-center max-w-full" style="min-width: 300px;">
-        <!-- Posts (Images) will appear here -->
-      </div>
+    <div id="posts-section" class="space-y-4"></div>
+    <div id="videos-section" class="space-y-4 hidden"></div>
+  </div>
 
-      <!-- Videos Section -->
-      <div id="videosSection" class="tabSection hidden max-w-full justify-center" style="min-width: 640px;">
-        <!-- Videos (Landscape) appear here -->
-      </div>
-
-      <!-- Shorts Section -->
-      <div id="shortsSection" class="tabSection hidden max-w-full justify-center" style="min-width: 360px;">
-        <!-- Shorts (Vertical Videos) appear here -->
-      </div>
-
+  <!-- Upload Modal -->
+  <div id="uploadModal" class="fixed inset-0 hidden flex items-center justify-center z-50">
+    <div class="bg-white p-6 rounded shadow-md w-full max-w-md relative">
+      <button id="close-upload" class="absolute top-2 right-2 text-gray-500 hover:text-black">&times;</button>
+      <h2 class="text-xl font-semibold mb-4">Upload / Edit Post</h2>
+      <form id="upload-form" class="space-y-4">
+        <input type="text" name="title" placeholder="Title" class="w-full border rounded px-3 py-2" required />
+        <textarea name="description" placeholder="Description" class="w-full border rounded px-3 py-2" required></textarea>
+        <input type="text" name="tags" placeholder="Tags (comma-separated)" class="w-full border rounded px-3 py-2" required />
+        <input type="file" name="media" accept="image/*,video/*" class="w-full" />
+        <p id="upload-status" class="text-sm"></p>
+        <button type="submit" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded">Submit</button>
+      </form>
     </div>
   </div>
 
   <script>
-    
+    const uploadModal = document.getElementById("uploadModal");
+    const openUploadBtn = document.getElementById("open-upload");
+    const closeUploadBtn = document.getElementById("close-upload");
+    const uploadForm = document.getElementById("upload-form");
+    const postsSection = document.getElementById("posts-section");
+    const videosSection = document.getElementById("videos-section");
 
-       const auth = firebase.auth();
-    const db = firebase.database();
-    const storage = firebase.storage();
+    const togglePostsBtn = document.getElementById("toggle-posts");
+    const toggleVideosBtn = document.getElementById("toggle-videos");
 
-    // Elements
-    const loginContainer = document.getElementById("loginContainer");
-    const mainContainer = document.getElementById("mainContainer");
-    const userIdInput = document.getElementById("userIdInput");
-
-    const postsSection = document.getElementById("postsSection");
-    const videosSection = document.getElementById("videosSection");
-    const shortsSection = document.getElementById("shortsSection");
-
-    const tabButtons = document.querySelectorAll(".tabBtn");
-    const tabSections = document.querySelectorAll(".tabSection");
-
-    // Toggle tabs function
-    function switchTab(tabName) {
-      tabSections.forEach(sec => {
-        sec.classList.add("hidden");
-        if (sec.id === tabName + "Section") {
-          sec.classList.remove("hidden");
-        }
-      });
-      tabButtons.forEach(btn => {
-        btn.classList.remove("bg-pink-500", "text-white");
-        btn.classList.add("bg-gray-300", "text-gray-700");
-        if (btn.dataset.tab === tabName) {
-          btn.classList.add("bg-pink-500", "text-white");
-          btn.classList.remove("bg-gray-300", "text-gray-700");
-        }
-      });
-    }
-
-    // Setup tab buttons event
-    tabButtons.forEach(btn => {
-      btn.addEventListener("click", () => {
-        switchTab(btn.dataset.tab);
-      });
-    });
-
-    // Start on posts tab
-    switchTab("posts");
-
-    // Create post card (image)
-    function createPostCard(post) {
-      const card = document.createElement("div");
-      card.className = "bg-white rounded-md shadow-md overflow-hidden max-w-xs";
-      if (post.type === "image") {
-        card.innerHTML = `
-          <img src="${post.url}" alt="${post.title || 'Image Post'}" class="w-full h-48 object-cover" loading="lazy" />
-          <div class="p-2 text-center font-semibold text-gray-700">${post.title || "Untitled"}</div>
-        `;
-      }
-      return card;
-    }
-
-    // Create video card (landscape)
-    function createVideoCard(post) {
-      const card = document.createElement("div");
-      card.className = "bg-black rounded-md shadow-md overflow-hidden max-w-md";
-      card.innerHTML = `
-        <video controls class="w-full h-56 object-cover" preload="metadata" playsinline>
-          <source src="${post.url}" type="video/mp4" />
-          Sorry, your browser does not support the video tag.
-        </video>
-        <div class="p-2 text-center text-white font-semibold bg-gray-800">${post.title || "Untitled Video"}</div>
-      `;
-      return card;
-    }
-
-    // Create short card (vertical video)
-    function createShortCard(post) {
-      const card = document.createElement("div");
-      card.className = "bg-black rounded-md shadow-md overflow-hidden max-w-xs";
-      card.innerHTML = `
-        <video controls class="w-40 h-80 object-cover" preload="metadata" playsinline>
-          <source src="${post.url}" type="video/mp4" />
-          Sorry, your browser does not support the video tag.
-        </video>
-        <div class="p-2 text-center text-white font-semibold bg-gray-800">${post.title || "Untitled Short"}</div>
-      `;
-      return card;
-    }
-
-    // Fetch video metadata (width and height) from Firebase Storage
-    async function getVideoMetadata(storagePath) {
-      try {
-        const videoRef = storage.refFromURL(storagePath);
-        const metadata = await videoRef.getMetadata();
-        return { width: metadata.customMetadata?.width || 0, height: metadata.customMetadata?.height || 0 };
-      } catch (error) {
-        console.error("Error fetching metadata for video:", error);
-        return { width: 0, height: 0 };
-      }
-    }
-
-    // Load posts/videos/shorts for user
-    async function loadPosts(userId) {
-      const userRef = db.ref(`uploads/${userId}`);
-      userRef.off(); // remove previous listener if any
-      userRef.on("value", async snapshot => {
-        postsSection.innerHTML = "";
-        videosSection.innerHTML = "";
-        shortsSection.innerHTML = "";
-
-        const promises = [];
-
-        snapshot.forEach(childSnapshot => {
-          const post = childSnapshot.val();
-
-          // If image - push directly
-          if (post.type === "image") {
-            const card = createPostCard(post);
-            postsSection.appendChild(card);
-          }
-          // If video - fetch metadata and categorize
-          else if (post.type === "video") {
-            // Fetch metadata promise
-            const p = (async () => {
-              // Assume post.url is Firebase Storage URL
-              // To get metadata, we must ensure metadata includes width & height stored in customMetadata
-              // If not available, treat as landscape by default
-
-              // Firebase storage URL can be in form 'gs://...' or https URL
-              // If https URL, replace with gs:// equivalent if needed (depends on your storage structure)
-              // Here assuming you store https download URLs - so we cannot get metadata from storage ref directly
-              // So, store metadata in your db as customMetadata or else skip dimension check
-
-              // For demo, let's assume you store width and height in post metadata (post.width, post.height)
-              // If missing, default to landscape
-
-              const width = post.width || 1280;
-              const height = post.height || 720;
-
-              if (height > width) {
-                // Vertical video = short
-                const shortCard = createShortCard(post);
-                shortsSection.appendChild(shortCard);
-              } else {
-                // Landscape video
-                const videoCard = createVideoCard(post);
-                videosSection.appendChild(videoCard);
-              }
-            })();
-            promises.push(p);
-          }
-        });
-
-        await Promise.all(promises);
-      });
-    }
-
-    // Login button handler
-    document.getElementById("loginBtn").onclick = async () => {
-      const provider = new firebase.auth.GoogleAuthProvider();
-      try {
-        await auth.signInWithPopup(provider);
-      } catch (err) {
-        alert("Login failed: " + err.message);
-      }
+    openUploadBtn.onclick = () => {
+      uploadForm.reset();
+      uploadModal.classList.remove("hidden");
     };
 
-    // Monitor auth state and load user data
-    auth.onAuthStateChanged(user => {
-      if (user) {
-        loginContainer.classList.add("hidden");
-        mainContainer.classList.remove("hidden");
-        userIdInput.value = user.uid;
-        loadPosts(user.uid);
-      } else {
-        loginContainer.classList.remove("hidden");
-        mainContainer.classList.add("hidden");
-      }
-    });
-  </script>
+    closeUploadBtn.onclick = () => {
+      uploadModal.classList.add("hidden");
+    };
 
+    togglePostsBtn.onclick = () => {
+      postsSection.classList.remove("hidden");
+      videosSection.classList.add("hidden");
+    };
+
+    toggleVideosBtn.onclick = () => {
+      postsSection.classList.add("hidden");
+      videosSection.classList.remove("hidden");
+    };
+
+    uploadForm.onsubmit = (e) => {
+      e.preventDefault();
+      const formData = new FormData(uploadForm);
+      const title = formData.get("title");
+      const description = formData.get("description");
+      const tags = formData.get("tags");
+      const mediaFile = formData.get("media");
+
+      const isVideo = mediaFile && mediaFile.type.startsWith("video/");
+      const mediaURL = URL.createObjectURL(mediaFile);
+
+      const itemDiv = document.createElement("div");
+      itemDiv.className = "p-4 bg-white rounded shadow";
+      itemDiv.innerHTML = `
+        <h3 class="text-lg font-semibold">${title}</h3>
+        <p class="text-gray-700 mb-2">${description}</p>
+        <p class="text-sm text-gray-500 mb-2">Tags: ${tags}</p>
+        ${isVideo
+          ? `<video controls class="w-full max-h-64"><source src="${mediaURL}" type="${mediaFile.type}"></video>`
+          : `<img src="${mediaURL}" alt="${title}" class="w-full max-h-64 object-cover rounded" />`}
+      `;
+
+      (isVideo ? videosSection : postsSection).prepend(itemDiv);
+
+      document.getElementById("upload-status").textContent = "Upload successful!";
+      setTimeout(() => {
+        uploadModal.classList.add("hidden");
+        document.getElementById("upload-status").textContent = "";
+      }, 1000);
+    };
+  </script>
 </body>
 </html>
