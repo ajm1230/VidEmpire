@@ -1,181 +1,258 @@
-<!DOCTYPE html><html lang="en" class="dark">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Post Manager</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-      tailwind.config = {
-        darkMode: 'class',
-      }
-    </script>
-  </head>
-  <body class="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 min-h-screen">
-    <div class="container mx-auto px-4 py-6">
-      <div class="flex justify-between items-center mb-6">
-        <h1 class="text-2xl font-bold">Upload Post Manager</h1>
-      new  <button
-          onclick="toggleDarkMode()"
-          class="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition"
-        >
-          Toggle Dark Mode
-        </button>
-      </div><div class="flex gap-4 mb-4 flex-wrap">
-    <input
-      type="text"
-      id="searchInput"
-      placeholder="Search by title or tag"
-      class="w-full sm:w-1/3 px-4 py-2 border border-gray-300 rounded"
-      oninput="filterPosts()"
-    />
-    <select
-      id="sortSelect"
-      onchange="sortPosts()"
-      class="px-4 py-2 border border-gray-300 rounded"
-    >
-      <option value="latest">Sort by Latest</option>
-      <option value="oldest">Sort by Oldest</option>
-    </select>
+<!DOCTYPE html>
+<html lang="en" >
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>User Content Dashboard</title>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-storage-compat.js"></script>
+  <script src="firebase-config.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* Smooth fade for toggle content */
+    .fade-enter {
+      opacity: 0;
+      transform: translateX(20px);
+    }
+    .fade-enter-active {
+      opacity: 1;
+      transform: translateX(0);
+      transition: opacity 300ms, transform 300ms;
+    }
+    .fade-exit {
+      opacity: 1;
+      transform: translateX(0);
+    }
+    .fade-exit-active {
+      opacity: 0;
+      transform: translateX(-20px);
+      transition: opacity 300ms, transform 300ms;
+    }
+  </style>
+</head>
+<body class="bg-gray-100 min-h-screen flex flex-col items-center p-4">
+
+  <!-- Login Section -->
+  <div id="loginContainer" class="max-w-md w-full bg-white rounded-md shadow-md p-6">
+    <h2 class="text-2xl font-semibold mb-4 text-center">Login</h2>
+    <button id="loginBtn" class="w-full bg-pink-600 text-white py-2 rounded hover:bg-pink-700 transition">Login with Google</button>
   </div>
 
-  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6" id="postList"></div>
+  <!-- Main Content Section (hidden until login) -->
+  <div id="mainContainer" class="hidden max-w-7xl w-full mt-6 bg-white rounded-md shadow-md p-4 flex flex-col">
 
-  <form id="uploadForm" class="mt-10">
-    <input type="file" id="fileInput" class="block w-full mb-4" accept="image/*,video/*" required />
-    <input type="text" id="titleInput" class="block w-full mb-4 p-2 border" placeholder="Title" required />
-    <input type="text" id="tagsInput" class="block w-full mb-4 p-2 border" placeholder="Tags (comma separated)" />
-    <button
-      type="submit"
-      class="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700 transition"
-    >
-      Upload
-    </button>
-    <div id="progressBarContainer" class="w-full bg-gray-200 mt-4 hidden">
-      <div
-        id="progressBar"
-        class="bg-green-500 text-xs font-medium text-white text-center p-0.5 leading-none rounded"
-        style="width: 0%"
-      >
-        0%
-      </div>
+    <!-- User ID (hidden) -->
+    <input type="hidden" id="userIdInput" />
+
+    <!-- Toggle Buttons -->
+    <div class="flex justify-center space-x-4 mb-6">
+      <button data-tab="posts" class="tabBtn bg-pink-500 text-white px-4 py-2 rounded shadow hover:bg-pink-600 transition">Posts</button>
+      <button data-tab="videos" class="tabBtn bg-gray-300 text-gray-700 px-4 py-2 rounded shadow hover:bg-pink-100 transition">Videos</button>
+      <button data-tab="shorts" class="tabBtn bg-gray-300 text-gray-700 px-4 py-2 rounded shadow hover:bg-pink-100 transition">Shorts</button>
     </div>
-  </form>
-</div>
 
-<script>
-  let posts = []
+    <!-- Sections Container -->
+    <div class="flex flex-row space-x-6 justify-center w-full max-w-full overflow-x-auto">
 
-  function toggleDarkMode() {
-    document.documentElement.classList.toggle('dark')
-  }
+      <!-- Posts Section -->
+      <div id="postsSection" class="tabSection flex flex-wrap gap-4 justify-center max-w-full" style="min-width: 300px;">
+        <!-- Posts (Images) will appear here -->
+      </div>
 
-  document.getElementById('uploadForm').addEventListener('submit', function (e) {
-    e.preventDefault()
-    const file = document.getElementById('fileInput').files[0]
-    const title = document.getElementById('titleInput').value
-    const tags = document.getElementById('tagsInput').value.split(',').map(t => t.trim())
+      <!-- Videos Section -->
+      <div id="videosSection" class="tabSection hidden max-w-full justify-center" style="min-width: 640px;">
+        <!-- Videos (Landscape) appear here -->
+      </div>
 
-    const reader = new FileReader()
-    reader.onload = function (event) {
-      const post = {
-        id: Date.now(),
-        title,
-        tags,
-        file: event.target.result,
-        type: file.type.startsWith('video') ? 'video' : 'image',
-        timestamp: Date.now(),
-      }
-      posts.push(post)
-      renderPosts()
+      <!-- Shorts Section -->
+      <div id="shortsSection" class="tabSection hidden max-w-full justify-center" style="min-width: 360px;">
+        <!-- Shorts (Vertical Videos) appear here -->
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    
+
+       const auth = firebase.auth();
+    const db = firebase.database();
+    const storage = firebase.storage();
+
+    // Elements
+    const loginContainer = document.getElementById("loginContainer");
+    const mainContainer = document.getElementById("mainContainer");
+    const userIdInput = document.getElementById("userIdInput");
+
+    const postsSection = document.getElementById("postsSection");
+    const videosSection = document.getElementById("videosSection");
+    const shortsSection = document.getElementById("shortsSection");
+
+    const tabButtons = document.querySelectorAll(".tabBtn");
+    const tabSections = document.querySelectorAll(".tabSection");
+
+    // Toggle tabs function
+    function switchTab(tabName) {
+      tabSections.forEach(sec => {
+        sec.classList.add("hidden");
+        if (sec.id === tabName + "Section") {
+          sec.classList.remove("hidden");
+        }
+      });
+      tabButtons.forEach(btn => {
+        btn.classList.remove("bg-pink-500", "text-white");
+        btn.classList.add("bg-gray-300", "text-gray-700");
+        if (btn.dataset.tab === tabName) {
+          btn.classList.add("bg-pink-500", "text-white");
+          btn.classList.remove("bg-gray-300", "text-gray-700");
+        }
+      });
     }
 
-    document.getElementById('progressBarContainer').classList.remove('hidden')
-    const progress = document.getElementById('progressBar')
-    let loaded = 0
-    const interval = setInterval(() => {
-      if (loaded >= 100) {
-        clearInterval(interval)
-        reader.readAsDataURL(file)
-        return
+    // Setup tab buttons event
+    tabButtons.forEach(btn => {
+      btn.addEventListener("click", () => {
+        switchTab(btn.dataset.tab);
+      });
+    });
+
+    // Start on posts tab
+    switchTab("posts");
+
+    // Create post card (image)
+    function createPostCard(post) {
+      const card = document.createElement("div");
+      card.className = "bg-white rounded-md shadow-md overflow-hidden max-w-xs";
+      if (post.type === "image") {
+        card.innerHTML = `
+          <img src="${post.url}" alt="${post.title || 'Image Post'}" class="w-full h-48 object-cover" loading="lazy" />
+          <div class="p-2 text-center font-semibold text-gray-700">${post.title || "Untitled"}</div>
+        `;
       }
-      loaded += 10
-      progress.style.width = loaded + '%'
-      progress.innerText = loaded + '%'
-    }, 100)
-  })
+      return card;
+    }
 
-  function renderPosts() {
-    const postList = document.getElementById('postList')
-    postList.innerHTML = ''
-    posts.forEach(post => {
-      const div = document.createElement('div')
-      div.className =
-        'bg-white dark:bg-gray-800 shadow-md rounded-xl p-4 transition hover:scale-[1.01] duration-200'
+    // Create video card (landscape)
+    function createVideoCard(post) {
+      const card = document.createElement("div");
+      card.className = "bg-black rounded-md shadow-md overflow-hidden max-w-md";
+      card.innerHTML = `
+        <video controls class="w-full h-56 object-cover" preload="metadata" playsinline>
+          <source src="${post.url}" type="video/mp4" />
+          Sorry, your browser does not support the video tag.
+        </video>
+        <div class="p-2 text-center text-white font-semibold bg-gray-800">${post.title || "Untitled Video"}</div>
+      `;
+      return card;
+    }
 
-      const media =
-        post.type === 'video'
-          ? `<video src="${post.file}" controls class="rounded mb-3 w-full"></video>`
-          : `<img src="${post.file}" class="rounded mb-3 w-full" />`
+    // Create short card (vertical video)
+    function createShortCard(post) {
+      const card = document.createElement("div");
+      card.className = "bg-black rounded-md shadow-md overflow-hidden max-w-xs";
+      card.innerHTML = `
+        <video controls class="w-40 h-80 object-cover" preload="metadata" playsinline>
+          <source src="${post.url}" type="video/mp4" />
+          Sorry, your browser does not support the video tag.
+        </video>
+        <div class="p-2 text-center text-white font-semibold bg-gray-800">${post.title || "Untitled Short"}</div>
+      `;
+      return card;
+    }
 
-      const tags = post.tags
-        .map(tag => `<span class="bg-blue-100 text-blue-800 text-xs font-semibold mr-2 px-2.5 py-0.5 rounded">${tag}</span>`) 
-        .join(' ')
+    // Fetch video metadata (width and height) from Firebase Storage
+    async function getVideoMetadata(storagePath) {
+      try {
+        const videoRef = storage.refFromURL(storagePath);
+        const metadata = await videoRef.getMetadata();
+        return { width: metadata.customMetadata?.width || 0, height: metadata.customMetadata?.height || 0 };
+      } catch (error) {
+        console.error("Error fetching metadata for video:", error);
+        return { width: 0, height: 0 };
+      }
+    }
 
-      div.innerHTML = `
-        ${media}
-        <h3 class="text-lg font-semibold mb-1">${post.title}</h3>
-        <div class="mb-2">${tags}</div>
-        <div class="text-sm text-gray-500 dark:text-gray-400">${new Date(post.timestamp).toLocaleString()}</div>
-      `
-      postList.appendChild(div)
-    })
-  }
+    // Load posts/videos/shorts for user
+    async function loadPosts(userId) {
+      const userRef = db.ref(`uploads/${userId}`);
+      userRef.off(); // remove previous listener if any
+      userRef.on("value", async snapshot => {
+        postsSection.innerHTML = "";
+        videosSection.innerHTML = "";
+        shortsSection.innerHTML = "";
 
-  function filterPosts() {
-    const query = document.getElementById('searchInput').value.toLowerCase()
-    const filtered = posts.filter(
-      p =>
-        p.title.toLowerCase().includes(query) ||
-        p.tags.some(tag => tag.toLowerCase().includes(query))
-    )
-    renderFilteredPosts(filtered)
-  }
+        const promises = [];
 
-  function sortPosts() {
-    const sortValue = document.getElementById('sortSelect').value
-    posts.sort((a, b) =>
-      sortValue === 'latest' ? b.timestamp - a.timestamp : a.timestamp - b.timestamp
-    )
-    renderPosts()
-  }
+        snapshot.forEach(childSnapshot => {
+          const post = childSnapshot.val();
 
-  function renderFilteredPosts(filteredPosts) {
-    const postList = document.getElementById('postList')
-    postList.innerHTML = ''
-    filteredPosts.forEach(post => {
-      const div = document.createElement('div')
-      div.className =
-        'bg-white dark:bg-gray-800 shadow-md rounded-xl p-4 transition hover:scale-[1.01] duration-200'
+          // If image - push directly
+          if (post.type === "image") {
+            const card = createPostCard(post);
+            postsSection.appendChild(card);
+          }
+          // If video - fetch metadata and categorize
+          else if (post.type === "video") {
+            // Fetch metadata promise
+            const p = (async () => {
+              // Assume post.url is Firebase Storage URL
+              // To get metadata, we must ensure metadata includes width & height stored in customMetadata
+              // If not available, treat as landscape by default
 
-      const media =
-        post.type === 'video'
-          ? `<video src="${post.file}" controls class="rounded mb-3 w-full"></video>`
-          : `<img src="${post.file}" class="rounded mb-3 w-full" />`
+              // Firebase storage URL can be in form 'gs://...' or https URL
+              // If https URL, replace with gs:// equivalent if needed (depends on your storage structure)
+              // Here assuming you store https download URLs - so we cannot get metadata from storage ref directly
+              // So, store metadata in your db as customMetadata or else skip dimension check
 
-      const tags = post.tags
-        .map(tag => `<span class="bg-blue-100 text-blue-800 text-xs font-semibold mr-2 px-2.5 py-0.5 rounded">${tag}</span>`) 
-        .join(' ')
+              // For demo, let's assume you store width and height in post metadata (post.width, post.height)
+              // If missing, default to landscape
 
-      div.innerHTML = `
-        ${media}
-        <h3 class="text-lg font-semibold mb-1">${post.title}</h3>
-        <div class="mb-2">${tags}</div>
-        <div class="text-sm text-gray-500 dark:text-gray-400">${new Date(post.timestamp).toLocaleString()}</div>
-      `
-      postList.appendChild(div)
-    })
-  }
-</script>
+              const width = post.width || 1280;
+              const height = post.height || 720;
 
-  </body>
+              if (height > width) {
+                // Vertical video = short
+                const shortCard = createShortCard(post);
+                shortsSection.appendChild(shortCard);
+              } else {
+                // Landscape video
+                const videoCard = createVideoCard(post);
+                videosSection.appendChild(videoCard);
+              }
+            })();
+            promises.push(p);
+          }
+        });
+
+        await Promise.all(promises);
+      });
+    }
+
+    // Login button handler
+    document.getElementById("loginBtn").onclick = async () => {
+      const provider = new firebase.auth.GoogleAuthProvider();
+      try {
+        await auth.signInWithPopup(provider);
+      } catch (err) {
+        alert("Login failed: " + err.message);
+      }
+    };
+
+    // Monitor auth state and load user data
+    auth.onAuthStateChanged(user => {
+      if (user) {
+        loginContainer.classList.add("hidden");
+        mainContainer.classList.remove("hidden");
+        userIdInput.value = user.uid;
+        loadPosts(user.uid);
+      } else {
+        loginContainer.classList.remove("hidden");
+        mainContainer.classList.add("hidden");
+      }
+    });
+  </script>
+
+</body>
 </html>
