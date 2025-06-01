@@ -1,197 +1,221 @@
-<!DOCTYPE html>
-<html lang="en">
+<!DOCTYPE html><html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Create Channel</title>
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-storage-compat.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Upload Post</title>
   <script src="firebase-config.js"></script>
-  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
-  <div class="w-full max-w-xl bg-white rounded-xl shadow-xl p-6">
-    <div id="authCheck" class="text-center">
-      <button id="loginRedirect" class="bg-blue-600 text-white font-bold px-4 py-2 rounded">Login / Sign Up</button>
+<body class="bg-gray-100 min-h-screen p-4">
+  <!-- Login Container -->
+  <div id="login-container" class="flex items-center justify-center min-h-screen">
+    <div class="text-center bg-white p-6 rounded-lg shadow">
+      <p class="mb-4 text-gray-700">You must be signed in to view or upload posts.</p>
+      <a href="login.html" class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 transition">Login / Sign Up</a>
     </div>
-    <div id="channelSection" class="hidden">
-      <h2 class="text-xl font-bold mb-4" id="formTitle">Create New Channel</h2>
-      <form id="channelForm" class="space-y-4">
-        <input type="file" id="channelImageInput" class="block w-full" accept="image/*">
-        <img id="imagePreview" src="" class="w-24 h-24 object-cover rounded-full hidden" />
-        <input type="text" id="channelNameInput" placeholder="Enter Your Channel Name" class="w-full border px-3 py-2 rounded" required />
-        <input type="text" id="channelIdInput" placeholder="@channel-id" class="w-full border px-3 py-2 rounded" required />
-        <div id="suggestionBox" class="flex gap-2 flex-wrap"></div>
-        <input type="text" id="emailInput" readonly class="w-full border px-3 py-2 rounded bg-gray-100" />
-        <input type="text" id="uidInput" readonly class="w-full border px-3 py-2 rounded bg-gray-100" />
-        <button type="submit" id="submitBtn" class="bg-blue-600 text-white font-bold px-4 py-2 rounded w-full">Create Channel</button>
-        <button type="button" id="deleteBtn" class="bg-red-500 text-white font-bold px-4 py-2 rounded w-full hidden">Delete Channel</button>
-      </form>
-      <p id="message" class="mt-4 text-center"></p>
-    </div>
+  </div>  <!-- Main Interface -->  <div id="main-container" class="hidden">
+    <div class="flex justify-center space-x-4 mb-6">
+      <button id="toggle-posts" class="px-4 py-2 bg-blue-600 text-white rounded shadow">Posts</button>
+      <button id="toggle-videos" class="px-4 py-2 bg-gray-300 text-gray-800 rounded shadow">Videos</button>
+    </div><div class="grid gap-4 max-w-4xl mx-auto">
+  <div id="posts-section" class="grid grid-cols-1 sm:grid-cols-2 gap-4"></div>
+  <div id="videos-section" class="grid grid-cols-1 sm:grid-cols-2 gap-4 hidden"></div>
+</div>
+
+<button id="open-upload-modal" class="fixed bottom-6 right-6 bg-blue-600 text-white rounded-full w-14 h-14 flex items-center justify-center shadow-lg text-3xl">+</button>
+
+<div id="upload-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
+  <div class="bg-white p-6 rounded-lg shadow-lg w-full max-w-md relative">
+    <form id="upload-form" class="space-y-4">
+      <input type="hidden" id="userId" name="userId" />
+      <div>
+        <label class="block mb-1">Title</label>
+        <input type="text" id="title" name="title" required class="w-full border rounded px-3 py-2">
+      </div>
+      <div>
+        <label class="block mb-1">Description</label>
+        <textarea id="description" name="description" rows="3" required class="w-full border rounded px-3 py-2"></textarea>
+      </div>
+      <div>
+        <label class="block mb-1">Tags (comma separated)</label>
+        <input type="text" id="tags" name="tags" required class="w-full border rounded px-3 py-2">
+      </div>
+      <div>
+        <label class="block mb-1">Media File</label>
+        <input type="file" id="media" name="media" accept="image/*,video/*" class="w-full">
+      </div>
+      <p id="status" class="text-center text-sm"></p>
+      <div class="flex justify-between items-center">
+        <button type="button" id="cancel-upload" class="text-gray-600 hover:text-red-600">Cancel</button>
+        <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Upload</button>
+      </div>
+    </form>
   </div>
-  <script>
-    const auth = firebase.auth();
-    const db = firebase.database();
-    const storage = firebase.storage();
+</div>
 
-    const channelForm = document.getElementById("channelForm");
-    const channelNameInput = document.getElementById("channelNameInput");
-    const channelIdInput = document.getElementById("channelIdInput");
-    const suggestionBox = document.getElementById("suggestionBox");
-    const emailInput = document.getElementById("emailInput");
-    const uidInput = document.getElementById("uidInput");
-    const imagePreview = document.getElementById("imagePreview");
-    const channelImageInput = document.getElementById("channelImageInput");
-    const message = document.getElementById("message");
-    const channelSection = document.getElementById("channelSection");
-    const loginRedirect = document.getElementById("loginRedirect");
-    const authCheck = document.getElementById("authCheck");
-    const deleteBtn = document.getElementById("deleteBtn");
-    const formTitle = document.getElementById("formTitle");
-    const submitBtn = document.getElementById("submitBtn");
+  </div>  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+    import { getDatabase, ref, push, set, onValue, update, remove } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
+    import { getStorage, ref as sRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-storage.js";
 
-    let currentImageUrl = "";
-    let currentChannelId = null;
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getDatabase(app);
+    const storage = getStorage(app);
 
-    const showAlert = (msg, success = true) => {
-      message.textContent = msg;
-      message.className = success ? "text-green-600" : "text-red-600";
-    };
+    const loginContainer = document.getElementById("login-container");
+    const mainContainer = document.getElementById("main-container");
+    const postsSection = document.getElementById("posts-section");
+    const videosSection = document.getElementById("videos-section");
+    const openUploadModal = document.getElementById("open-upload-modal");
+    const uploadModal = document.getElementById("upload-modal");
+    const cancelUpload = document.getElementById("cancel-upload");
+    const form = document.getElementById("upload-form");
+    const status = document.getElementById("status");
+    const userIdInput = document.getElementById("userId");
 
-    const isChannelIdTaken = async (uid, id) => {
-      const snapshot = await db.ref(`channels/${uid}/${id}`).once("value");
-      return snapshot.exists();
-    };
-
-    const generateSuggestions = async (name, uid) => {
-      const base = name.toLowerCase().replace(/\s+/g, '').replace(/[^a-z0-9]/g, '');
-      const suggestions = [];
-      for (let i = 0; i < 5; i++) {
-        const random = Math.floor(Math.random() * 900) + 100;
-        const id = `@${base}${random}`;
-        if (!(await isChannelIdTaken(uid, id))) suggestions.push(id);
-        if (suggestions.length === 3) break;
-      }
-      return suggestions;
-    };
-
-    channelNameInput.addEventListener("input", async () => {
-      const name = channelNameInput.value.trim();
-      if (!name || !auth.currentUser) return;
-      const uid = auth.currentUser.uid;
-      const suggestions = await generateSuggestions(name, uid);
-      suggestionBox.innerHTML = "";
-      suggestions.forEach(id => {
-        const btn = document.createElement("button");
-        btn.className = "bg-gray-200 px-2 py-1 rounded hover:bg-gray-300 text-sm";
-        btn.textContent = id;
-        btn.onclick = () => channelIdInput.value = id;
-        suggestionBox.appendChild(btn);
-      });
-      if (suggestions[0]) channelIdInput.value = suggestions[0];
-    });
-
-    channelImageInput.addEventListener("change", () => {
-      const file = channelImageInput.files[0];
-      if (file) {
-        const reader = new FileReader();
-        reader.onload = () => {
-          imagePreview.src = reader.result;
-          imagePreview.classList.remove("hidden");
-        };
-        reader.readAsDataURL(file);
-      }
-    });
-
-    auth.onAuthStateChanged(async user => {
+    onAuthStateChanged(auth, user => {
       if (user) {
-        authCheck.classList.add("hidden");
-        channelSection.classList.remove("hidden");
-        emailInput.value = user.email;
-        uidInput.value = user.uid;
-
-        // Load the user's channels (if you want to allow only one, you can adjust this)
-        const snapshot = await db.ref(`channels/${user.uid}`).once("value");
-        if (snapshot.exists()) {
-          snapshot.forEach(child => {
-            const data = child.val();
-            channelNameInput.value = data.name;
-            channelIdInput.value = data.id;
-            emailInput.value = data.email;
-            uidInput.value = data.uid;
-            if (data.imageUrl) {
-              imagePreview.src = data.imageUrl;
-              imagePreview.classList.remove("hidden");
-              currentImageUrl = data.imageUrl;
-            }
-            formTitle.textContent = "Edit Your Channel";
-            submitBtn.textContent = "Update Channel";
-            deleteBtn.classList.remove("hidden");
-            currentChannelId = data.id;
-          });
-        }
-      } else {
-        loginRedirect.onclick = () => location.href = "login.html";
+        loginContainer.classList.add("hidden");
+        mainContainer.classList.remove("hidden");
+        userIdInput.value = user.uid;
+        loadPosts(user.uid);
       }
     });
 
-    channelForm.addEventListener("submit", async (e) => {
+    function createPostCard(post) {
+      const card = document.createElement("div");
+      card.className = "bg-white rounded shadow p-4";
+      card.innerHTML = `
+        <h3 class="text-lg font-bold mb-1">${post.title}</h3>
+        <p class="text-sm text-gray-600 mb-2">${post.description}</p>
+        <${post.type === "video" ? "video controls" : "img"} src="${post.mediaUrl}" class="w-full h-48 object-cover rounded mb-2"></${post.type === "video" ? "video" : "img"}>
+        <div class="flex justify-between items-center">
+          <button data-id="${post.postId}" class="edit-btn text-blue-600 hover:underline">Edit</button>
+          <button data-id="${post.postId}" class="delete-btn text-red-600 hover:underline">Delete</button>
+        </div>
+      `;
+      return card;
+    }
+
+    function loadPosts(userId) {
+      const userRef = ref(db, `uploads/${userId}`);
+      onValue(userRef, snapshot => {
+        postsSection.innerHTML = "";
+        videosSection.innerHTML = "";
+        snapshot.forEach(child => {
+          const post = child.val();
+          const card = createPostCard(post);
+          if (post.type === "image") postsSection.appendChild(card);
+          else if (post.type === "video") videosSection.appendChild(card);
+        });
+      });
+    }
+
+    document.addEventListener("click", e => {
+      if (e.target.classList.contains("delete-btn")) {
+        handleDelete(e.target.dataset.id, auth.currentUser.uid);
+      }
+      if (e.target.classList.contains("edit-btn")) {
+        handleEdit(e.target.dataset.id, auth.currentUser.uid);
+      }
+    });
+
+    async function handleDelete(postId, userId) {
+      try {
+        await remove(ref(db, `uploads/${userId}/${postId}`));
+        alert("Post deleted successfully.");
+      } catch (error) {
+        alert("Error deleting post: " + error.message);
+      }
+    }
+
+    function handleEdit(postId, userId) {
+      const postRef = ref(db, `uploads/${userId}/${postId}`);
+      onValue(postRef, snapshot => {
+        const post = snapshot.val();
+        if (post) {
+          uploadModal.classList.remove("hidden");
+          form.title.value = post.title;
+          form.description.value = post.description;
+          form.tags.value = post.tags.join(", ");
+          form.setAttribute("data-edit-id", postId);
+        }
+      }, { onlyOnce: true });
+    }
+
+    openUploadModal.addEventListener("click", () => uploadModal.classList.remove("hidden"));
+    cancelUpload.addEventListener("click", () => {
+      if (confirm("Are you sure you want to cancel?")) {
+        uploadModal.classList.add("hidden");
+        form.reset();
+        form.removeAttribute("data-edit-id");
+        status.textContent = "";
+      }
+    });
+
+    document.getElementById("toggle-posts").addEventListener("click", () => {
+      postsSection.parentElement.classList.remove("hidden");
+      videosSection.parentElement.classList.add("hidden");
+    });
+
+    document.getElementById("toggle-videos").addEventListener("click", () => {
+      videosSection.parentElement.classList.remove("hidden");
+      postsSection.parentElement.classList.add("hidden");
+    });
+
+    form.addEventListener("submit", async (e) => {
       e.preventDefault();
-      if (!auth.currentUser) {
-        showAlert("You must be logged in!", false);
+      status.textContent = "";
+
+      const title = form.title.value.trim();
+      const description = form.description.value.trim();
+      const tags = form.tags.value.trim().split(",").map(t => t.trim()).filter(Boolean);
+      const file = form.media.files[0];
+      const userId = auth.currentUser.uid;
+      const editId = form.getAttribute("data-edit-id");
+
+      if (!title || !description || !tags.length || (!file && !editId)) {
+        status.textContent = "Please fill in all required fields.";
+        status.className = "text-red-600 text-sm";
         return;
       }
-      const name = channelNameInput.value.trim();
-      const id = channelIdInput.value.trim();
-      const uid = auth.currentUser.uid;
-      if (!name || !id) return showAlert("All fields are required", false);
 
-      if (!currentChannelId || currentChannelId !== id) {
-        if (await isChannelIdTaken(uid, id)) return showAlert("Channel ID already in use", false);
-      }
+      try {
+        let mediaUrl = null;
+        let fileType = file ? (file.type.startsWith("video") ? "video" : "image") : null;
 
-      let imageUrl = currentImageUrl;
-      if (channelImageInput.files.length > 0) {
-        const file = channelImageInput.files[0];
-        const ext = file.name.split('.').pop();
-        const path = `channel-images/${uid}/${id}/profile.${ext}`;
-        const uploadTask = await storage.ref(path).put(file);
-        imageUrl = await uploadTask.ref.getDownloadURL();
-      }
+        if (file) {
+          status.textContent = "Uploading file...";
+          const storageRef = sRef(storage, `uploads/${userId}/${Date.now()}_${file.name}`);
+          const snapshot = await uploadBytes(storageRef, file);
+          mediaUrl = await getDownloadURL(snapshot.ref);
+        }
 
-      const data = {
-        uid: uid,
-        email: auth.currentUser.email,
-        name,
-        id,
-        imageUrl,
-        createdAt: Date.now()
-      };
+        const postData = {
+          title, description, tags, userId, timestamp: Date.now(),
+          ...(mediaUrl && { mediaUrl }),
+          ...(fileType && { type: fileType })
+        };
 
-      if (currentChannelId && currentChannelId !== id) {
-        await db.ref(`channels/${uid}/${currentChannelId}`).remove();
-      }
+        if (editId) {
+          await update(ref(db, `uploads/${userId}/${editId}`), postData);
+          form.removeAttribute("data-edit-id");
+        } else {
+          const newRef = push(ref(db, `uploads/${userId}`));
+          await set(newRef, { ...postData, postId: newRef.key });
+        }
 
-      await db.ref(`channels/${uid}/${id}`).set(data)
-        .then(() => showAlert("Channel saved successfully!"))
-        .catch((error) => showAlert("Firebase error: " + error.message, false));
-      currentChannelId = id;
-      currentImageUrl = imageUrl;
-      formTitle.textContent = "Edit Your Channel";
-      submitBtn.textContent = "Update Channel";
-      deleteBtn.classList.remove("hidden");
-    });
-
-    deleteBtn.addEventListener("click", async () => {
-      if (confirm("Are you sure you want to delete this channel?")) {
-        await db.ref(`channels/${auth.currentUser.uid}/${currentChannelId}`).remove();
-        showAlert("Channel deleted.");
-        setTimeout(() => location.reload(), 1500);
+        status.textContent = "Post uploaded successfully!";
+        status.className = "text-green-600 text-sm";
+        form.reset();
+        uploadModal.classList.add("hidden");
+      } catch (error) {
+        console.error("Upload error:", error);
+        status.textContent = "Error uploading post: " + error.message;
+        status.className = "text-red-600 text-sm";
       }
     });
-  </script>
-</body>
+  </script></body>
 </html>
