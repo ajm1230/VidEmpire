@@ -1,11 +1,15 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Media Upload</title>
   <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app.js"></script>
-  <script src="firebase-config.js" ></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore.js"></script>
+ 
+  <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-storage.js"></script>
+ <script src="firebase-config.js" ></script>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     #uploadModal {
@@ -15,18 +19,19 @@
 </head>
 <body class="bg-gray-100 font-sans">
   <div class="container mx-auto px-4 py-6">
-    <div class="flex justify-between items-center mb-6">
-      <h1 class="text-2xl font-bold">Media Upload Dashboard</h1>
-      <button id="open-upload" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Upload Media</button>
+    <div id="auth-section" class="flex justify-end mb-4"></div>
+    <div id="dashboard" class="hidden">
+      <div class="flex justify-between items-center mb-6">
+        <h1 class="text-2xl font-bold">Media Upload Dashboard</h1>
+        <button id="open-upload" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Upload Media</button>
+      </div>
+      <div class="flex gap-4 mb-6">
+        <button id="toggle-posts" class="bg-gray-300 hover:bg-gray-400 px-4 py-2 rounded">Posts</button>
+        <button id="toggle-videos" class="bg-gray-300 hover:bg-gray-400 px-4 py-2 rounded">Videos</button>
+      </div>
+      <div id="posts-section" class="space-y-4"></div>
+      <div id="videos-section" class="space-y-4 hidden"></div>
     </div>
-
-    <div class="flex gap-4 mb-6">
-      <button id="toggle-posts" class="bg-gray-300 hover:bg-gray-400 px-4 py-2 rounded">Posts</button>
-      <button id="toggle-videos" class="bg-gray-300 hover:bg-gray-400 px-4 py-2 rounded">Videos</button>
-    </div>
-
-    <div id="posts-section" class="space-y-4"></div>
-    <div id="videos-section" class="space-y-4 hidden"></div>
   </div>
 
   <!-- Upload Modal -->
@@ -38,7 +43,7 @@
         <input type="text" name="title" placeholder="Title" class="w-full border rounded px-3 py-2" required />
         <textarea name="description" placeholder="Description" class="w-full border rounded px-3 py-2" required></textarea>
         <input type="text" name="tags" placeholder="Tags (comma-separated)" class="w-full border rounded px-3 py-2" required />
-        <input type="file" name="media" accept="image/*,video/*" class="w-full" />
+        <input type="file" name="media" accept="image/*,video/*" class="w-full" required />
         <p id="upload-status" class="text-sm"></p>
         <button type="submit" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded">Submit</button>
       </form>
@@ -46,65 +51,54 @@
   </div>
 
   <script>
+    const firebaseConfig = {
+      // Replace with your Firebase config
+    };
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+    const storage = firebase.storage();
+
+    const authSection = document.getElementById("auth-section");
+    const dashboard = document.getElementById("dashboard");
     const uploadModal = document.getElementById("uploadModal");
     const openUploadBtn = document.getElementById("open-upload");
     const closeUploadBtn = document.getElementById("close-upload");
     const uploadForm = document.getElementById("upload-form");
     const postsSection = document.getElementById("posts-section");
     const videosSection = document.getElementById("videos-section");
-
     const togglePostsBtn = document.getElementById("toggle-posts");
     const toggleVideosBtn = document.getElementById("toggle-videos");
+
+    auth.onAuthStateChanged(user => {
+      if (!user) {
+        authSection.innerHTML = '<a href="login.html" class="bg-blue-500 text-white px-4 py-2 rounded">Login / Signup</a>';
+      } else {
+        authSection.innerHTML = `<span class="mr-2">Logged in as ${user.email}</span>`;
+        dashboard.classList.remove("hidden");
+        fetchUserMedia(user.uid);
+      }
+    });
 
     openUploadBtn.onclick = () => {
       uploadForm.reset();
       uploadModal.classList.remove("hidden");
     };
-
-    closeUploadBtn.onclick = () => {
-      uploadModal.classList.add("hidden");
-    };
+    closeUploadBtn.onclick = () => uploadModal.classList.add("hidden");
 
     togglePostsBtn.onclick = () => {
       postsSection.classList.remove("hidden");
       videosSection.classList.add("hidden");
     };
-
     toggleVideosBtn.onclick = () => {
       postsSection.classList.add("hidden");
       videosSection.classList.remove("hidden");
     };
 
-    uploadForm.onsubmit = (e) => {
+    uploadForm.onsubmit = async (e) => {
       e.preventDefault();
+      const user = auth.currentUser;
+      if (!user) return;
       const formData = new FormData(uploadForm);
       const title = formData.get("title");
-      const description = formData.get("description");
-      const tags = formData.get("tags");
-      const mediaFile = formData.get("media");
-
-      const isVideo = mediaFile && mediaFile.type.startsWith("video/");
-      const mediaURL = URL.createObjectURL(mediaFile);
-
-      const itemDiv = document.createElement("div");
-      itemDiv.className = "p-4 bg-white rounded shadow";
-      itemDiv.innerHTML = `
-        <h3 class="text-lg font-semibold">${title}</h3>
-        <p class="text-gray-700 mb-2">${description}</p>
-        <p class="text-sm text-gray-500 mb-2">Tags: ${tags}</p>
-        ${isVideo
-          ? `<video controls class="w-full max-h-64"><source src="${mediaURL}" type="${mediaFile.type}"></video>`
-          : `<img src="${mediaURL}" alt="${title}" class="w-full max-h-64 object-cover rounded" />`}
-      `;
-
-      (isVideo ? videosSection : postsSection).prepend(itemDiv);
-
-      document.getElementById("upload-status").textContent = "Upload successful!";
-      setTimeout(() => {
-        uploadModal.classList.add("hidden");
-        document.getElementById("upload-status").textContent = "";
-      }, 1000);
-    };
-  </script>
-</body>
-</html>
+      const description = formData.get("
